@@ -25,14 +25,11 @@ describe('App', () => {
     expect(autoboost).toBeInTheDocument();
   });
 
-  it('handles item selection', () => {
+  it('handles tab switching', () => {
     render(<App />);
-    const cleanRam = screen.getByText('Clean RAM');
-    fireEvent.click(cleanRam);
+    const systemBoosterTab = screen.getByText('System Booster');
+    fireEvent.click(systemBoosterTab);
 
-    // Toggle back
-    fireEvent.click(cleanRam);
-
-    expect(cleanRam).toBeInTheDocument();
+    expect(screen.getByText('System Cleaner')).toBeInTheDocument();
   });
 });
