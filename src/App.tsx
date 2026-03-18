@@ -15,12 +15,12 @@ declare global {
 export default function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
+  const [currentTab, setCurrentTab] = useState<'Game Booster' | 'System Booster'>('Game Booster');
+  const [isCleaning, setIsCleaning] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const [autoBoost, setAutoBoost] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<string[]>([
-    'cpu-core', 'cpu-sleep', 'power', 'clipboard', 'explorer', 'ram', 'cortana', 'telemetry'
-  ]);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -39,6 +39,58 @@ export default function App() {
 
   const addLog = (msg: string, isError = false) => {
     setLogs(prev => [...prev, `> ${msg}`]);
+  };
+
+
+  const handleCleanSystem = async () => {
+    setIsCleaning(true);
+    addLog('Initiating System Clean sequence...');
+    if (window.eel) {
+      try {
+        const result = await window.eel.clean_system()();
+        if (result.status === 'success') {
+          addLog(result.message);
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (error) {
+        addLog(`Failed to communicate with backend: ${error}`, true);
+      }
+    } else {
+      setTimeout(() => {
+        addLog('[Web Preview] Cleaned 150.45 MB of Junk.');
+        setIsCleaning(false);
+      }, 1000);
+      return;
+    }
+    setIsCleaning(false);
+  };
+
+  const handleOptimizeStartup = async () => {
+    setIsOptimizing(true);
+    addLog('Initiating Startup Optimization sequence...');
+    if (window.eel) {
+      try {
+        const result = await window.eel.optimize_startup()();
+        if (result.status === 'success') {
+          addLog(result.message);
+          if (result.details) {
+            addLog(result.details);
+          }
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (error) {
+        addLog(`Failed to communicate with backend: ${error}`, true);
+      }
+    } else {
+      setTimeout(() => {
+        addLog('[Web Preview] Disabled 3 startup programs.');
+        setIsOptimizing(false);
+      }, 1000);
+      return;
+    }
+    setIsOptimizing(false);
   };
 
   const handleBoost = async () => {
@@ -64,7 +116,7 @@ export default function App() {
       setTimeout(() => {
         const freed = (Math.random() * 500 + 200).toFixed(2);
         addLog(`[Web Preview] Freed ${freed} MB of RAM.`);
-        addLog(`[Web Preview] Optimized: ${selectedItems.length} items`);
+        addLog(`[Web Preview] Optimized: Process list items`);
         setIsBoosting(false);
       }, 1500);
       return;
@@ -75,22 +127,7 @@ export default function App() {
 
   const toggleAutoBoost = () => setAutoBoost(!autoBoost);
 
-  const toggleItem = (id: string) => {
-    setSelectedItems(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
 
-  const specialItems = [
-    { id: 'cpu-core', icon: 'CPU', label: 'Enable CPU Core' },
-    { id: 'cpu-sleep', icon: 'ZZZ', label: 'Disable CPU Sleep Mode' },
-    { id: 'power', icon: '⚡', label: 'Enable power solutions' },
-    { id: 'clipboard', icon: '📋', label: 'Clear clipboard' },
-    { id: 'explorer', icon: 'EXE', label: 'explorer.exe' },
-    { id: 'ram', icon: 'RAM', label: 'Clean RAM' },
-    { id: 'cortana', icon: 'C', label: 'Disable Cortana', desc: 'Disable Cortana virtual assistant', highlight: true },
-    { id: 'telemetry', icon: 'TEL', label: 'Disable Telemetry' }
-  ];
 
   return (
     <div className="bg-dark-bg text-gray-300 font-sans h-screen overflow-hidden flex flex-col select-none">
@@ -103,17 +140,24 @@ export default function App() {
               <div className="w-3 h-3 bg-black rounded-sm transform rotate-45"></div>
             </div>
             <nav className="flex space-x-8">
-              <a className="hover:text-razer-green transition-colors" href="#">Launcher</a>
-              <a className="text-razer-green glass-border pb-1" href="#">Game Booster</a>
-              <a className="hover:text-razer-green transition-colors" href="#">System Booster</a>
+              <button
+                onClick={() => setCurrentTab('Game Booster')}
+                className={`transition-colors ${currentTab === 'Game Booster' ? 'text-razer-green glass-border pb-1' : 'hover:text-razer-green'}`}>
+                Game Booster
+              </button>
+              <button
+                onClick={() => setCurrentTab('System Booster')}
+                className={`transition-colors ${currentTab === 'System Booster' ? 'text-razer-green glass-border pb-1' : 'hover:text-razer-green'}`}>
+                System Booster
+              </button>
             </nav>
           </div>
           {/* Window Controls */}
           <div className="flex items-center space-x-4 text-gray-500">
             <button className="hover:text-white transition-colors">⚙️</button>
-            <button className="hover:text-white transition-colors">—</button>
-            <button className="hover:text-white transition-colors">▢</button>
-            <button className="hover:text-red-500 transition-colors">✕</button>
+            <button onClick={() => window.eel && window.eel.minimize_window()} className="hover:text-white transition-colors">—</button>
+            <button onClick={() => window.eel && window.eel.maximize_window()} className="hover:text-white transition-colors">▢</button>
+            <button onClick={() => window.eel && window.eel.close_window()} className="hover:text-red-500 transition-colors">✕</button>
           </div>
         </div>
       </header>
@@ -131,8 +175,11 @@ export default function App() {
       {/* END: SubNavigation */}
 
       {/* BEGIN: MainContent */}
-      <main className="flex-1 overflow-y-auto p-8 custom-scrollbar" data-purpose="dashboard-content">
-        {/* BEGIN: OptimizationSummary */}
+<main className="flex-1 overflow-y-auto p-8 custom-scrollbar" data-purpose="dashboard-content">
+
+        {currentTab === 'Game Booster' && (
+          <>
+            {/* BEGIN: OptimizationSummary */}
         <section className="flex items-center justify-between mb-10 bg-panel-bg p-6 rounded-sm border-l-4 border-razer-green shadow-lg" data-purpose="summary-card">
           <div className="flex items-center space-x-6">
             {/* Circular Progress Placeholder */}
@@ -164,42 +211,7 @@ export default function App() {
           </div>
         </section>
         {/* END: OptimizationSummary */}
-
-        {/* BEGIN: SpecialsSection */}
-        <section className="mb-10">
-          <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-2">
-            <div className="flex items-center space-x-2">
-              <span className="text-razer-green">●</span>
-              <h2 className="text-sm font-bold uppercase tracking-widest text-white">Specials</h2>
-              <span className="text-xs text-gray-500 lowercase ml-2">{selectedItems.length} out of 12 items will be optimized during boost</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-purpose="optimization-grid">
-            {specialItems.map(item => (
-              <div
-                key={item.id}
-                onClick={() => toggleItem(item.id)}
-                className={
-                  item.highlight
-                    ? `bg-gray-800 p-4 flex items-center space-x-4 border border-razer-green ring-1 ring-razer-green ring-opacity-50 shadow-lg scale-105 z-10 cursor-pointer`
-                    : `bg-panel-bg p-4 flex items-center space-x-4 border border-transparent hover:border-gray-700 transition-colors group cursor-pointer`
-                }
-              >
-                <div className={`w-8 h-8 flex items-center justify-center rounded ${item.highlight ? 'bg-razer-green' : 'bg-gray-800 group-hover:bg-gray-700'}`}>
-                  <span className={item.highlight ? 'text-black text-xs font-bold' : 'text-xs'}>{item.icon}</span>
-                </div>
-                <div className="flex-1">
-                  <p className={`text-sm ${item.highlight ? 'font-bold text-white' : 'font-semibold text-gray-300'}`}>{item.label}</p>
-                  {item.desc && <p className="text-[10px] text-razer-green uppercase">{item.desc}</p>}
-                </div>
-                {selectedItems.includes(item.id) && <span className="text-razer-green check-icon">✓</span>}
-              </div>
-            ))}
-          </div>
-        </section>
-        {/* END: SpecialsSection */}
-
-        {/* BEGIN: ProcessesSection */}
+            {/* BEGIN: ProcessesSection */}
         <section>
           <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-2">
             <div className="flex items-center space-x-2">
@@ -256,8 +268,53 @@ export default function App() {
           </div>
         </section>
         {/* END: ProcessesSection */}
+          </>
+        )}
 
-        {/* Output Console Box (moved from old design) */}
+
+        {currentTab === 'System Booster' && (
+          <div className="flex flex-col space-y-8">
+            <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-blue-500 shadow-lg" data-purpose="clean-system-card">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <div className="text-blue-500 text-3xl">🧹</div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-white">System Cleaner</h1>
+                    <p className="text-sm text-gray-500 font-medium">Reclaims disk space by thoroughly wiping temporary files.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCleanSystem}
+                  disabled={isCleaning}
+                  className={`bg-blue-500 hover:bg-blue-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)] ${isCleaning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isCleaning ? 'Cleaning...' : 'Clean Now'}
+                </button>
+              </div>
+            </section>
+
+            <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-purple-500 shadow-lg" data-purpose="startup-optimize-card">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <div className="text-purple-500 text-3xl">🚀</div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-white">Startup Optimizer</h1>
+                    <p className="text-sm text-gray-500 font-medium">Improves boot times by disabling non-essential applications.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleOptimizeStartup}
+                  disabled={isOptimizing}
+                  className={`bg-purple-500 hover:bg-purple-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(168,85,247,0.3)] ${isOptimizing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isOptimizing ? 'Optimizing...' : 'Optimize Now'}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+{/* Output Console Box (moved from old design) */}
         <section className="mt-10 mb-8 border-t border-gray-800 pt-6">
           <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Logs</h2>
           <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
@@ -269,7 +326,6 @@ export default function App() {
             </div>
           </div>
         </section>
-
       </main>
       {/* END: MainContent */}
 

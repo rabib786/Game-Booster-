@@ -136,6 +136,31 @@ def optimize_startup():
             "details": ""
         }
 
+
+import sys
+import ctypes
+
+@eel.expose
+def close_window():
+    sys.exit(0)
+
+@eel.expose
+def minimize_window():
+    try:
+        hwnd = ctypes.windll.user32.GetForegroundWindow()
+        ctypes.windll.user32.ShowWindow(hwnd, 6) # SW_MINIMIZE
+    except Exception:
+        pass
+
+@eel.expose
+def maximize_window():
+    try:
+        hwnd = ctypes.windll.user32.GetForegroundWindow()
+        # We can try to maximize
+        ctypes.windll.user32.ShowWindow(hwnd, 3) # SW_MAXIMIZE
+    except Exception:
+        pass
+
 if __name__ == '__main__':
     # Start the app. port=0 automatically selects an available port.
     eel.start('index.html', size=(1000, 650), port=0)
