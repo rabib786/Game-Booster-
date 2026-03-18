@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Booster</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Eel injects this script automatically -->
+    <script type="text/javascript" src="/eel.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NEXUS <span class="neon-text">BOOSTER</span></h1>
+            <p>Optimize your rig for maximum performance.</p>
+        </header>
+
+        <main>
+            <div class="card">
+                <div class="icon-placeholder cpu-icon"></div>
+                <h2>Game Booster</h2>
+                <p>Kill background apps to free up RAM and CPU.</p>
+                <button id="btn-boost" onclick="boostGame()">BOOST GAME</button>
+            </div>
+
+            <div class="card">
+                <div class="icon-placeholder hdd-icon"></div>
+                <h2>System Cleaner</h2>
+                <p>Clear temporary files to free up disk space.</p>
+                <button id="btn-clean" onclick="cleanSystem()">CLEAN SYSTEM</button>
+            </div>
+
+            <div class="card">
+                <div class="icon-placeholder startup-icon"></div>
+                <h2>Startup Optimizer</h2>
+                <p>Disable non-essential startup apps for faster boot.</p>
+                <button id="btn-startup" onclick="optimizeStartup()">OPTIMIZE STARTUP</button>
+            </div>
+        </main>
+
+        <div class="console">
+            <h3>System Logs</h3>
+            <div id="logs" class="log-window">
+                <p>> System ready...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
