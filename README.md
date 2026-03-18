@@ -1,20 +1,74 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+  <h1 style="font-size: 3rem;">Nexus Booster</h1>
+  <p>A lightweight, powerful Game & System Booster app built with React, Vite, Python, and Eel.</p>
 </div>
 
-# Run and deploy your AI Studio app
+## Overview
+Nexus Booster is an all-in-one desktop application designed to improve your gaming and system performance. Think of it as a lightweight alternative to Razer Cortex.
 
-This contains everything you need to run your app locally.
+It consists of two main components running seamlessly as one desktop application:
+- **Frontend**: A sleek, modern UI built with React, Tailwind CSS, and Vite.
+- **Backend**: A robust Python backend utilizing `psutil`, `os`, and Windows Registry (`winreg`) to execute system-level operations cleanly.
 
-View your app in AI Studio: https://ai.studio/apps/7d91b5cc-0230-4d8a-98f3-52bb4ef86e29
+## Features
+- **Game Booster**: Frees up RAM and CPU by safely killing non-essential background processes (Spotify, Chrome, Discord, etc.).
+- **System Cleaner**: Reclaims disk space by thoroughly and safely wiping the Windows `%TEMP%` directory.
+- **Startup Optimizer**: Improves boot times by disabling non-essential applications from the Windows startup registry.
 
-## Run Locally
+## Prerequisites
+To run and build this project locally, you will need:
+- [Node.js](https://nodejs.org/) (for building the React UI)
+- [Python 3.8+](https://www.python.org/) (for running the desktop app)
 
-**Prerequisites:**  Node.js
+## Installation & Setup
 
+1. **Install Node Dependencies**
+   Open a terminal in the root directory and run:
+   ```bash
+   npm i
+   ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+2. **Install Python Dependencies**
+   You need `eel` and `psutil` installed in your Python environment:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   *(Or simply run: `pip install eel psutil pytest pytest-mock`)*
+
+## Running the Application
+
+### The Complete Desktop App (Recommended)
+This application must be run on Windows and ideally with **Administrator privileges** to properly clean files and optimize the registry.
+
+1. First, build the React frontend:
+   ```bash
+   npm run build
+   ```
+2. Then, run the Python application:
+   ```bash
+   npm run python:start
+   ```
+   *This will launch a native desktop window serving the React UI connected to the Python backend!*
+
+### Web Preview Mode (Development)
+If you only want to work on the UI without executing real Python system commands, you can run the web preview:
+```bash
+npm run vite:dev
+```
+
+## Testing
+
+We have full test coverage for both the frontend UI and the backend system logic.
+
+- **Test Frontend (Vitest)**
+  ```bash
+  npm run test:ui
+  ```
+
+- **Test Backend (Pytest)**
+  ```bash
+  npm run test:backend
+  ```
+
+## Architecture Notes
+We use [Eel](https://github.com/python-eel/Eel) to bridge the gap between Python and JavaScript. During the `npm run build` step, Vite compiles the React app into the `booster_app_export/web` directory, which Python then serves as a local desktop window.

@@ -6,6 +6,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Terminal, Zap, Trash2, Cpu, HardDrive, Download, Rocket } from 'lucide-react';
 
+// Declare eel for TypeScript
+declare global {
+  interface Window {
+    eel: any;
+  }
+}
+
 export default function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
@@ -17,44 +24,112 @@ export default function App() {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
+  // Expose a function to Python to add logs asynchronously
+  useEffect(() => {
+    if (window.eel) {
+      window.eel.expose(addLogFromPython, 'add_log');
+    }
+  }, []);
+
+  const addLogFromPython = (msg: string) => {
+    setLogs(prev => [...prev, `> ${msg}`]);
+  };
+
   const addLog = (msg: string, isError = false) => {
     setLogs(prev => [...prev, `> ${msg}`]);
   };
 
-  const handleBoost = () => {
+  const handleBoost = async () => {
     setIsBoosting(true);
     addLog('Initiating Game Boost sequence...');
-    // Simulate Python backend delay
-    setTimeout(() => {
-      const freed = (Math.random() * 500 + 200).toFixed(2);
-      addLog(`Freed ${freed} MB of RAM.`);
-      addLog('Closed: spotify.exe, discord.exe');
-      setIsBoosting(false);
-    }, 1500);
+
+    if (window.eel) {
+      try {
+        const result = await window.eel.boost_game()();
+        if (result.status === 'success') {
+          addLog(result.message);
+          if (result.details) {
+            addLog(result.details);
+          }
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (error) {
+        addLog(`Failed to communicate with backend: ${error}`, true);
+      }
+    } else {
+      // Fallback for web preview mode if Eel is not available
+      setTimeout(() => {
+        const freed = (Math.random() * 500 + 200).toFixed(2);
+        addLog(`[Web Preview] Freed ${freed} MB of RAM.`);
+        addLog('[Web Preview] Closed: spotify.exe, discord.exe');
+        setIsBoosting(false);
+      }, 1500);
+      return;
+    }
+
+    setIsBoosting(false);
   };
 
-  const handleClean = () => {
+  const handleClean = async () => {
     setIsCleaning(true);
     addLog('Initiating System Clean sequence...');
-    // Simulate Python backend delay
-    setTimeout(() => {
-      const freed = (Math.random() * 1000 + 100).toFixed(2);
-      addLog(`Cleaned ${freed} MB of Junk from %TEMP%.`);
-      setIsCleaning(false);
-    }, 2000);
+
+    if (window.eel) {
+      try {
+        const result = await window.eel.clean_system()();
+        if (result.status === 'success') {
+          addLog(result.message);
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (error) {
+        addLog(`Failed to communicate with backend: ${error}`, true);
+      }
+    } else {
+      // Fallback for web preview mode if Eel is not available
+      setTimeout(() => {
+        const freed = (Math.random() * 1000 + 100).toFixed(2);
+        addLog(`[Web Preview] Cleaned ${freed} MB of Junk from %TEMP%.`);
+        setIsCleaning(false);
+      }, 2000);
+      return;
+    }
+
+    setIsCleaning(false);
   };
 
-  const handleOptimize = () => {
+  const handleOptimize = async () => {
     setIsOptimizing(true);
     addLog('Initiating Startup Optimization sequence...');
-    // Simulate Python backend delay
-    setTimeout(() => {
-      const disabledCount = Math.floor(Math.random() * 3) + 1;
-      const apps = ['spotify', 'discord', 'skype', 'onedrive'].sort(() => 0.5 - Math.random()).slice(0, disabledCount);
-      addLog(`Disabled ${disabledCount} startup programs.`);
-      addLog(`Disabled: ${apps.join(', ')}`);
-      setIsOptimizing(false);
-    }, 1800);
+
+    if (window.eel) {
+      try {
+        const result = await window.eel.optimize_startup()();
+        if (result.status === 'success') {
+          addLog(result.message);
+          if (result.details) {
+            addLog(result.details);
+          }
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (error) {
+        addLog(`Failed to communicate with backend: ${error}`, true);
+      }
+    } else {
+      // Fallback for web preview mode if Eel is not available
+      setTimeout(() => {
+        const disabledCount = Math.floor(Math.random() * 3) + 1;
+        const apps = ['spotify', 'discord', 'skype', 'onedrive'].sort(() => 0.5 - Math.random()).slice(0, disabledCount);
+        addLog(`[Web Preview] Disabled ${disabledCount} startup programs.`);
+        addLog(`[Web Preview] Disabled: ${apps.join(', ')}`);
+        setIsOptimizing(false);
+      }, 1800);
+      return;
+    }
+
+    setIsOptimizing(false);
   };
 
   return (
@@ -65,13 +140,11 @@ export default function App() {
           <h1 className="text-5xl font-black tracking-widest text-white">
             NEXUS <span className="text-[#00ffcc] drop-shadow-[0_0_15px_rgba(0,255,204,0.5)]">BOOSTER</span>
           </h1>
-          <p className="text-gray-500 tracking-wide uppercase text-sm flex items-center justify-center gap-2">
-            <Zap className="w-4 h-4 text-yellow-500" /> Web Preview Mode
-          </p>
-          <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 px-4 py-2 rounded-full text-xs font-medium">
-            <Download className="w-4 h-4" />
-            Download the files in the "booster_app_export" folder to run the actual Python app locally!
-          </div>
+          {!window.eel && (
+            <p className="text-gray-500 tracking-wide uppercase text-sm flex items-center justify-center gap-2">
+              <Zap className="w-4 h-4 text-yellow-500" /> Web Preview Mode
+            </p>
+          )}
         </header>
 
         {/* Main Actions */}
