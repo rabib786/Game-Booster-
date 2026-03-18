@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Terminal, Zap, Trash2, Cpu, HardDrive, Download, Rocket } from 'lucide-react';
 
 // Declare eel for TypeScript
 declare global {
@@ -16,9 +15,12 @@ declare global {
 export default function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
-  const [isCleaning, setIsCleaning] = useState(false);
-  const [isOptimizing, setIsOptimizing] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
+
+  const [autoBoost, setAutoBoost] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<string[]>([
+    'cpu-core', 'cpu-sleep', 'power', 'clipboard', 'explorer', 'ram', 'cortana', 'telemetry'
+  ]);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,7 +64,7 @@ export default function App() {
       setTimeout(() => {
         const freed = (Math.random() * 500 + 200).toFixed(2);
         addLog(`[Web Preview] Freed ${freed} MB of RAM.`);
-        addLog('[Web Preview] Closed: spotify.exe, discord.exe');
+        addLog(`[Web Preview] Optimized: ${selectedItems.length} items`);
         setIsBoosting(false);
       }, 1500);
       return;
@@ -71,147 +73,225 @@ export default function App() {
     setIsBoosting(false);
   };
 
-  const handleClean = async () => {
-    setIsCleaning(true);
-    addLog('Initiating System Clean sequence...');
+  const toggleAutoBoost = () => setAutoBoost(!autoBoost);
 
-    if (window.eel) {
-      try {
-        const result = await window.eel.clean_system()();
-        if (result.status === 'success') {
-          addLog(result.message);
-        } else {
-          addLog(`Error: ${result.message}`, true);
-        }
-      } catch (error) {
-        addLog(`Failed to communicate with backend: ${error}`, true);
-      }
-    } else {
-      // Fallback for web preview mode if Eel is not available
-      setTimeout(() => {
-        const freed = (Math.random() * 1000 + 100).toFixed(2);
-        addLog(`[Web Preview] Cleaned ${freed} MB of Junk from %TEMP%.`);
-        setIsCleaning(false);
-      }, 2000);
-      return;
-    }
-
-    setIsCleaning(false);
+  const toggleItem = (id: string) => {
+    setSelectedItems(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
   };
 
-  const handleOptimize = async () => {
-    setIsOptimizing(true);
-    addLog('Initiating Startup Optimization sequence...');
-
-    if (window.eel) {
-      try {
-        const result = await window.eel.optimize_startup()();
-        if (result.status === 'success') {
-          addLog(result.message);
-          if (result.details) {
-            addLog(result.details);
-          }
-        } else {
-          addLog(`Error: ${result.message}`, true);
-        }
-      } catch (error) {
-        addLog(`Failed to communicate with backend: ${error}`, true);
-      }
-    } else {
-      // Fallback for web preview mode if Eel is not available
-      setTimeout(() => {
-        const disabledCount = Math.floor(Math.random() * 3) + 1;
-        const apps = ['spotify', 'discord', 'skype', 'onedrive'].sort(() => 0.5 - Math.random()).slice(0, disabledCount);
-        addLog(`[Web Preview] Disabled ${disabledCount} startup programs.`);
-        addLog(`[Web Preview] Disabled: ${apps.join(', ')}`);
-        setIsOptimizing(false);
-      }, 1800);
-      return;
-    }
-
-    setIsOptimizing(false);
-  };
+  const specialItems = [
+    { id: 'cpu-core', icon: 'CPU', label: 'Enable CPU Core' },
+    { id: 'cpu-sleep', icon: 'ZZZ', label: 'Disable CPU Sleep Mode' },
+    { id: 'power', icon: '⚡', label: 'Enable power solutions' },
+    { id: 'clipboard', icon: '📋', label: 'Clear clipboard' },
+    { id: 'explorer', icon: 'EXE', label: 'explorer.exe' },
+    { id: 'ram', icon: 'RAM', label: 'Clean RAM' },
+    { id: 'cortana', icon: 'C', label: 'Disable Cortana', desc: 'Disable Cortana virtual assistant', highlight: true },
+    { id: 'telemetry', icon: 'TEL', label: 'Disable Telemetry' }
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-gray-200 flex items-center justify-center p-6 font-sans">
-      <div className="w-full max-w-5xl flex flex-col gap-8">
-        {/* Header */}
-        <header className="text-center space-y-3">
-          <h1 className="text-5xl font-black tracking-widest text-white">
-            NEXUS <span className="text-[#00ffcc] drop-shadow-[0_0_15px_rgba(0,255,204,0.5)]">BOOSTER</span>
-          </h1>
-          {!window.eel && (
-            <p className="text-gray-500 tracking-wide uppercase text-sm flex items-center justify-center gap-2">
-              <Zap className="w-4 h-4 text-yellow-500" /> Web Preview Mode
-            </p>
-          )}
-        </header>
-
-        {/* Main Actions */}
-        <main className="grid md:grid-cols-3 gap-6">
-          {/* Game Booster Card */}
-          <div className="bg-[#151518] border border-white/5 rounded-xl p-8 text-center transition-all hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] hover:border-[#00ffcc]/30 flex flex-col items-center">
-            <div className="h-16 w-16 rounded-full bg-[#00ffcc]/10 flex items-center justify-center mb-4">
-              <Cpu className="w-8 h-8 text-[#00ffcc]" />
+    <div className="bg-dark-bg text-gray-300 font-sans h-screen overflow-hidden flex flex-col select-none">
+      {/* BEGIN: MainHeader */}
+      <header className="bg-black text-xs font-bold uppercase tracking-widest border-b border-gray-800" data-purpose="app-top-nav">
+        <div className="flex items-center justify-between px-4 h-10">
+          <div className="flex items-center space-x-6">
+            {/* Logo Placeholder */}
+            <div className="w-6 h-6 bg-razer-green rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-black rounded-sm transform rotate-45"></div>
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Game Booster</h2>
-            <p className="text-gray-400 text-sm mb-8 flex-grow">Kill background apps to free up RAM and CPU.</p>
+            <nav className="flex space-x-8">
+              <a className="hover:text-razer-green transition-colors" href="#">Launcher</a>
+              <a className="text-razer-green glass-border pb-1" href="#">Game Booster</a>
+              <a className="hover:text-razer-green transition-colors" href="#">System Booster</a>
+            </nav>
+          </div>
+          {/* Window Controls */}
+          <div className="flex items-center space-x-4 text-gray-500">
+            <button className="hover:text-white transition-colors">⚙️</button>
+            <button className="hover:text-white transition-colors">—</button>
+            <button className="hover:text-white transition-colors">▢</button>
+            <button className="hover:text-red-500 transition-colors">✕</button>
+          </div>
+        </div>
+      </header>
+      {/* END: MainHeader */}
+
+      {/* BEGIN: SubNavigation */}
+      <nav className="bg-header-bg px-8 py-2 flex items-center space-x-8 text-sm font-semibold uppercase tracking-wider" data-purpose="booster-sub-nav">
+        <div className="flex items-center space-x-2 text-gray-500 mr-4">
+          <button className="hover:text-white">&lt;</button>
+          <button className="hover:text-white">&gt;</button>
+        </div>
+        <a className="text-razer-green border-b-2 border-razer-green pb-1" href="#">Boost</a>
+        <a className="text-gray-500 hover:text-white transition-colors" href="#">Booster Prime</a>
+      </nav>
+      {/* END: SubNavigation */}
+
+      {/* BEGIN: MainContent */}
+      <main className="flex-1 overflow-y-auto p-8 custom-scrollbar" data-purpose="dashboard-content">
+        {/* BEGIN: OptimizationSummary */}
+        <section className="flex items-center justify-between mb-10 bg-panel-bg p-6 rounded-sm border-l-4 border-razer-green shadow-lg" data-purpose="summary-card">
+          <div className="flex items-center space-x-6">
+            {/* Circular Progress Placeholder */}
+            <div className="relative w-16 h-16 flex items-center justify-center">
+              <div className="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-razer-green rounded-full" style={{ clipPath: 'polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%)' }}></div>
+              <span className="text-razer-green text-xl">⚡</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">28 items will be optimized</h1>
+              <p className="text-sm text-gray-500 font-medium">Found 63 items ready for optimization</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-3 cursor-pointer" onClick={toggleAutoBoost}>
+              <span className="text-xs font-bold uppercase text-gray-400">Auto-Boost</span>
+              {/* Toggle Switch */}
+              <div className={`w-10 h-5 rounded-full relative transition-colors ${autoBoost ? 'bg-razer-green' : 'bg-gray-600'}`}>
+                <div className={`absolute top-1 w-3 h-3 bg-black rounded-full transition-all ${autoBoost ? 'right-1' : 'left-1'}`}></div>
+              </div>
+            </div>
             <button
               onClick={handleBoost}
               disabled={isBoosting}
-              className="w-full py-4 px-6 rounded-lg font-bold tracking-widest uppercase transition-all border-2 border-[#00ffcc] text-[#00ffcc] hover:bg-[#00ffcc] hover:text-[#0a0a0c] hover:shadow-[0_0_20px_rgba(0,255,204,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isBoosting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {isBoosting ? 'Boosting...' : 'Boost Game'}
+              {isBoosting ? 'Boosting...' : 'Boost Now'}
             </button>
           </div>
+        </section>
+        {/* END: OptimizationSummary */}
 
-          {/* System Cleaner Card */}
-          <div className="bg-[#151518] border border-white/5 rounded-xl p-8 text-center transition-all hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] hover:border-[#b026ff]/30 flex flex-col items-center">
-            <div className="h-16 w-16 rounded-full bg-[#b026ff]/10 flex items-center justify-center mb-4">
-              <HardDrive className="w-8 h-8 text-[#b026ff]" />
+        {/* BEGIN: SpecialsSection */}
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-2">
+            <div className="flex items-center space-x-2">
+              <span className="text-razer-green">●</span>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-white">Specials</h2>
+              <span className="text-xs text-gray-500 lowercase ml-2">{selectedItems.length} out of 12 items will be optimized during boost</span>
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">System Cleaner</h2>
-            <p className="text-gray-400 text-sm mb-8 flex-grow">Clear temporary files to free up disk space.</p>
-            <button
-              onClick={handleClean}
-              disabled={isCleaning}
-              className="w-full py-4 px-6 rounded-lg font-bold tracking-widest uppercase transition-all border-2 border-[#b026ff] text-[#b026ff] hover:bg-[#b026ff] hover:text-white hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isCleaning ? 'Cleaning...' : 'Clean System'}
-            </button>
           </div>
-
-          {/* Startup Optimizer Card */}
-          <div className="bg-[#151518] border border-white/5 rounded-xl p-8 text-center transition-all hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] hover:border-[#ff9900]/30 flex flex-col items-center">
-            <div className="h-16 w-16 rounded-full bg-[#ff9900]/10 flex items-center justify-center mb-4">
-              <Rocket className="w-8 h-8 text-[#ff9900]" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Startup Optimizer</h2>
-            <p className="text-gray-400 text-sm mb-8 flex-grow">Disable non-essential startup apps for faster boot.</p>
-            <button
-              onClick={handleOptimize}
-              disabled={isOptimizing}
-              className="w-full py-4 px-6 rounded-lg font-bold tracking-widest uppercase transition-all border-2 border-[#ff9900] text-[#ff9900] hover:bg-[#ff9900] hover:text-[#0a0a0c] hover:shadow-[0_0_20px_rgba(255,153,0,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isOptimizing ? 'Optimizing...' : 'Optimize Startup'}
-            </button>
-          </div>
-        </main>
-
-        {/* Console */}
-        <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
-          <div className="flex items-center gap-2 text-gray-500 mb-3 border-b border-[#222] pb-2">
-            <Terminal className="w-4 h-4" />
-            <h3 className="text-xs uppercase tracking-widest">System Logs</h3>
-          </div>
-          <div className="h-40 overflow-y-auto text-[#00ff00] text-sm space-y-1">
-            {logs.map((log, i) => (
-              <p key={i}>{log}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-purpose="optimization-grid">
+            {specialItems.map(item => (
+              <div
+                key={item.id}
+                onClick={() => toggleItem(item.id)}
+                className={
+                  item.highlight
+                    ? `bg-gray-800 p-4 flex items-center space-x-4 border border-razer-green ring-1 ring-razer-green ring-opacity-50 shadow-lg scale-105 z-10 cursor-pointer`
+                    : `bg-panel-bg p-4 flex items-center space-x-4 border border-transparent hover:border-gray-700 transition-colors group cursor-pointer`
+                }
+              >
+                <div className={`w-8 h-8 flex items-center justify-center rounded ${item.highlight ? 'bg-razer-green' : 'bg-gray-800 group-hover:bg-gray-700'}`}>
+                  <span className={item.highlight ? 'text-black text-xs font-bold' : 'text-xs'}>{item.icon}</span>
+                </div>
+                <div className="flex-1">
+                  <p className={`text-sm ${item.highlight ? 'font-bold text-white' : 'font-semibold text-gray-300'}`}>{item.label}</p>
+                  {item.desc && <p className="text-[10px] text-razer-green uppercase">{item.desc}</p>}
+                </div>
+                {selectedItems.includes(item.id) && <span className="text-razer-green check-icon">✓</span>}
+              </div>
             ))}
-            <div ref={logsEndRef} />
+          </div>
+        </section>
+        {/* END: SpecialsSection */}
+
+        {/* BEGIN: ProcessesSection */}
+        <section>
+          <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-2">
+            <div className="flex items-center space-x-2">
+              <span className="text-gray-600">○</span>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Processes</h2>
+              <span className="text-xs text-gray-500 lowercase ml-2">0 out of 19 items will be optimized during boost</span>
+            </div>
+            <div className="text-xs text-gray-500 flex items-center space-x-2 cursor-pointer hover:text-white transition-colors">
+              <span>Memory Usage</span>
+              <span>▼</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 opacity-70" data-purpose="process-grid">
+            {/* Process 1 */}
+            <div className="p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-default">
+              <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center">
+                <span className="text-[10px]">G</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-300 truncate">Google Chrome</p>
+                <p className="text-xs text-gray-500">4 GB</p>
+              </div>
+            </div>
+            {/* Process 2 */}
+            <div className="p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-default">
+              <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center">
+                <span className="text-[10px]">Q</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-300 truncate">QQ</p>
+                <p className="text-xs text-gray-500">196 MB</p>
+              </div>
+            </div>
+            {/* Process 3 */}
+            <div className="p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-default">
+              <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center">
+                <span className="text-[10px]">T</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-300 truncate">Microsoft Teams</p>
+                <p className="text-xs text-gray-500">18 MB</p>
+              </div>
+            </div>
+            {/* Process 4 */}
+            <div className="p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-default">
+              <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center">
+                <span className="text-[10px]">S</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-300 truncate">Host Process Services</p>
+                <p className="text-xs text-gray-500">17 MB</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        {/* END: ProcessesSection */}
+
+        {/* Output Console Box (moved from old design) */}
+        <section className="mt-10 mb-8 border-t border-gray-800 pt-6">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Logs</h2>
+          <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
+            <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1">
+              {logs.map((log, i) => (
+                <p key={i} className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
+              ))}
+              <div ref={logsEndRef} />
+            </div>
+          </div>
+        </section>
+
+      </main>
+      {/* END: MainContent */}
+
+      {/* BEGIN: BottomTaskbar */}
+      <footer className="bg-black/95 h-10 border-t border-gray-900 flex items-center justify-center space-x-6 relative shrink-0" data-purpose="windows-taskbar">
+        <div className="flex items-center space-x-4">
+          <div className="w-4 h-4 bg-blue-400/20 rounded-sm"></div>
+          <div className="w-4 h-4 bg-gray-600 rounded-sm"></div>
+          <div className="w-4 h-4 bg-gray-600 rounded-sm"></div>
+          <div className="w-6 h-6 border-b-2 border-blue-400 flex items-center justify-center bg-gray-800 rounded">
+            <span className="text-[10px]">⚡</span>
+          </div>
+          <div className="w-4 h-4 bg-gray-600 rounded-sm"></div>
+        </div>
+        <div className="absolute right-4 flex items-center space-x-4 text-[10px] text-gray-400 font-medium">
+          <div className="flex flex-col items-end">
+            <span>8:01 AM</span>
+            <span>3/21/2022</span>
           </div>
         </div>
-      </div>
+      </footer>
+      {/* END: BottomTaskbar */}
     </div>
   );
 }
