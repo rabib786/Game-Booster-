@@ -20,7 +20,7 @@ def boost_game():
     # Target processes (common resource hogs)
     targets = ['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe']
     freed_memory = 0
-    closed_apps = []
+    closed_apps = set()
 
     for proc in psutil.process_iter(['pid', 'name', 'memory_info']):
         try:
@@ -29,13 +29,13 @@ def boost_game():
                 # Get memory usage in MB
                 mem = proc.info['memory_info'].rss / (1024 * 1024) 
                 freed_memory += mem
-                closed_apps.append(name)
+                closed_apps.add(name)
                 proc.kill() # Safely terminate the process
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             # Ignore processes we can't access or that already died
             pass
 
-    unique_closed = list(set(closed_apps))
+    unique_closed = list(closed_apps)
     return {
         "status": "success",
         "message": f"Freed {freed_memory:.2f} MB of RAM.",
