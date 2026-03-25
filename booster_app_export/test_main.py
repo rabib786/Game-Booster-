@@ -16,7 +16,6 @@ sys.modules['psutil'] = MagicMock()
 import unittest
 from unittest.mock import patch
 import os
-import shutil
 
 # Now import clean_system from main
 from main import clean_system
@@ -30,8 +29,8 @@ class TestCleanSystem(unittest.TestCase):
     @patch('os.path.getsize')
     @patch('os.unlink')
     @patch('os.walk')
-    @patch('shutil.rmtree')
-    def test_clean_system_locked_file(self, mock_rmtree, mock_walk, mock_unlink,
+    @patch('os.rmdir')
+    def test_clean_system_locked_file(self, mock_rmdir, mock_walk, mock_unlink,
                                      mock_getsize, mock_isdir, mock_isfile,
                                      mock_listdir, mock_exists, mock_environ_get):
         """Test that locked files/directories don't cause the function to crash."""
@@ -46,9 +45,9 @@ class TestCleanSystem(unittest.TestCase):
         mock_getsize.return_value = 1024
         mock_unlink.side_effect = OSError("File is locked")
 
-        # Scenario 2: locked_dir is a directory and raises OSError when rmtree'd
-        mock_walk.return_value = [('C:\\Temp\\locked_dir', [], ['file_in_dir.txt'])]
-        mock_rmtree.side_effect = OSError("Directory is locked")
+        # Scenario 2: locked_dir is a directory and raises OSError when rmdir'd
+        mock_walk.return_value = [('C:\\Temp\\locked_dir', ['subdir'], ['file_in_dir.txt'])]
+        mock_rmdir.side_effect = OSError("Directory is locked")
 
         # Execute
         result = clean_system()
@@ -58,9 +57,9 @@ class TestCleanSystem(unittest.TestCase):
         # Freed space should be 0.00 MB because both attempts to delete failed
         self.assertIn("Cleaned 0.00 MB of Junk", result['message'])
 
-        # Verify that unlink was called for the file and rmtree for the directory
+        # Verify that unlink was called for the file and rmdir for the directory
         mock_unlink.assert_called()
-        mock_rmtree.assert_called()
+        mock_rmdir.assert_called()
 
     @patch('os.environ.get')
     @patch('os.path.exists')
@@ -70,8 +69,8 @@ class TestCleanSystem(unittest.TestCase):
     @patch('os.path.getsize')
     @patch('os.unlink')
     @patch('os.walk')
-    @patch('shutil.rmtree')
-    def test_clean_system_mixed_files(self, mock_rmtree, mock_walk, mock_unlink,
+    @patch('os.rmdir')
+    def test_clean_system_mixed_files(self, mock_rmdir, mock_walk, mock_unlink,
                                      mock_getsize, mock_isdir, mock_isfile,
                                      mock_listdir, mock_exists, mock_environ_get):
         """Test that some files are deleted even if others are locked."""
