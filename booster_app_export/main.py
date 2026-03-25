@@ -1,3 +1,5 @@
+import sys
+import ctypes
 import eel
 import psutil
 import os
@@ -136,9 +138,6 @@ def optimize_startup():
             "details": ""
         }
 
-
-import sys
-import ctypes
 
 @eel.expose
 def close_window():
