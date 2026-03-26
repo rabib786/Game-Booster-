@@ -29,11 +29,10 @@ To run and build this project locally, you will need:
    ```
 
 2. **Install Python Dependencies**
-   You need `eel` and `psutil` installed in your Python environment:
+   You need `eel`, `psutil`, and `pyinstaller` installed in your Python environment:
    ```bash
    pip install -r requirements.txt
    ```
-   *(Or simply run: `pip install eel psutil pytest pytest-mock`)*
 
 ## Running the Application
 
@@ -49,6 +48,14 @@ This application must be run on Windows and ideally with **Administrator privile
    npm run python:start
    ```
    *This will launch a native desktop window serving the React UI connected to the Python backend!*
+
+### Packaging as a Standalone Executable (.exe)
+To package the entire application (frontend and backend) into a single `.exe` file that can be launched easily on a Windows PC without requiring Python or Node to be installed, simply run:
+
+```bash
+npm run build:exe
+```
+After the build process completes, your standalone executable will be located at `booster_app_export/dist/main.exe`.
 
 ### Web Preview Mode (Development)
 If you only want to work on the UI without executing real Python system commands, you can run the web preview:
