@@ -1,0 +1,5 @@
+eel
+psutil
+pytest
+pytest-mock
+pyinstaller
