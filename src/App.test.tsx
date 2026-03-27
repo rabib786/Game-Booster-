@@ -25,11 +25,4 @@ describe('App', () => {
     expect(autoboost).toBeInTheDocument();
   });
 
-  it('handles tab switching', () => {
-    render(<App />);
-    const systemBoosterTab = screen.getByText('System Booster');
-    fireEvent.click(systemBoosterTab);
-
-    expect(screen.getByText('System Cleaner')).toBeInTheDocument();
-  });
 });

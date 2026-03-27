@@ -131,37 +131,6 @@ export default function App() {
 
   return (
     <div className="bg-dark-bg text-gray-300 font-sans h-screen overflow-hidden flex flex-col select-none">
-      {/* BEGIN: MainHeader */}
-      <header className="bg-black text-xs font-bold uppercase tracking-widest border-b border-gray-800" data-purpose="app-top-nav">
-        <div className="flex items-center justify-between px-4 h-10">
-          <div className="flex items-center space-x-6">
-            {/* Logo Placeholder */}
-            <div className="w-6 h-6 bg-razer-green rounded-full flex items-center justify-center">
-              <div className="w-3 h-3 bg-black rounded-sm transform rotate-45"></div>
-            </div>
-            <nav className="flex space-x-8">
-              <button
-                onClick={() => setCurrentTab('Game Booster')}
-                className={`transition-colors ${currentTab === 'Game Booster' ? 'text-razer-green glass-border pb-1' : 'hover:text-razer-green'}`}>
-                Game Booster
-              </button>
-              <button
-                onClick={() => setCurrentTab('System Booster')}
-                className={`transition-colors ${currentTab === 'System Booster' ? 'text-razer-green glass-border pb-1' : 'hover:text-razer-green'}`}>
-                System Booster
-              </button>
-            </nav>
-          </div>
-          {/* Window Controls */}
-          <div className="flex items-center space-x-4 text-gray-500">
-            <button className="hover:text-white transition-colors">⚙️</button>
-            <button onClick={() => window.eel && window.eel.minimize_window()} className="hover:text-white transition-colors">—</button>
-            <button onClick={() => window.eel && window.eel.maximize_window()} className="hover:text-white transition-colors">▢</button>
-            <button onClick={() => window.eel && window.eel.close_window()} className="hover:text-red-500 transition-colors">✕</button>
-          </div>
-        </div>
-      </header>
-      {/* END: MainHeader */}
 
       {/* BEGIN: SubNavigation */}
       <nav className="bg-header-bg px-8 py-2 flex items-center space-x-8 text-sm font-semibold uppercase tracking-wider" data-purpose="booster-sub-nav">
@@ -329,25 +298,6 @@ export default function App() {
       </main>
       {/* END: MainContent */}
 
-      {/* BEGIN: BottomTaskbar */}
-      <footer className="bg-black/95 h-10 border-t border-gray-900 flex items-center justify-center space-x-6 relative shrink-0" data-purpose="windows-taskbar">
-        <div className="flex items-center space-x-4">
-          <div className="w-4 h-4 bg-blue-400/20 rounded-sm"></div>
-          <div className="w-4 h-4 bg-gray-600 rounded-sm"></div>
-          <div className="w-4 h-4 bg-gray-600 rounded-sm"></div>
-          <div className="w-6 h-6 border-b-2 border-blue-400 flex items-center justify-center bg-gray-800 rounded">
-            <span className="text-[10px]">⚡</span>
-          </div>
-          <div className="w-4 h-4 bg-gray-600 rounded-sm"></div>
-        </div>
-        <div className="absolute right-4 flex items-center space-x-4 text-[10px] text-gray-400 font-medium">
-          <div className="flex flex-col items-end">
-            <span>8:01 AM</span>
-            <span>3/21/2022</span>
-          </div>
-        </div>
-      </footer>
-      {/* END: BottomTaskbar */}
     </div>
   );
 }
