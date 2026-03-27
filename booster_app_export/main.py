@@ -23,11 +23,24 @@ def boost_game():
     freed_memory = 0
     closed_apps = []
 
+    # Whitelist the current process and all its children (e.g., the browser spawned by eel)
+    whitelist_pids = set()
+    try:
+        current_process = psutil.Process()
+        whitelist_pids.add(current_process.pid)
+        for child in current_process.children(recursive=True):
+            whitelist_pids.add(child.pid)
+    except Exception:
+        pass
+
     # ⚡ Bolt Optimization: Only request the cheap 'name' attribute during process_iter
     # Fetching 'memory_info' for *every* running process involves expensive OS calls.
     # We instead only call proc.memory_info() on the matched target processes.
     for proc in psutil.process_iter(['name']):
         try:
+            if proc.pid in whitelist_pids:
+                continue
+
             name = proc.info.get('name')
             if name and name.lower() in targets:
                 # Get memory usage in MB only for target processes
