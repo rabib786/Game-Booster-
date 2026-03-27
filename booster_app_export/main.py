@@ -23,12 +23,15 @@ def boost_game():
     freed_memory = 0
     closed_apps = []
 
-    for proc in psutil.process_iter(['pid', 'name', 'memory_info']):
+    # ⚡ Bolt Optimization: Only request the cheap 'name' attribute during process_iter
+    # Fetching 'memory_info' for *every* running process involves expensive OS calls.
+    # We instead only call proc.memory_info() on the matched target processes.
+    for proc in psutil.process_iter(['name']):
         try:
             name = proc.info.get('name')
             if name and name.lower() in targets:
-                # Get memory usage in MB
-                mem = proc.info['memory_info'].rss / (1024 * 1024) 
+                # Get memory usage in MB only for target processes
+                mem = proc.memory_info().rss / (1024 * 1024)
                 freed_memory += mem
                 closed_apps.append(name)
                 proc.kill() # Safely terminate the process
