@@ -3,6 +3,9 @@ import ctypes
 import eel
 import psutil
 import os
+import threading
+import time
+import subprocess
 
 try:
     import winreg
@@ -11,6 +14,177 @@ except ImportError:
 
 # Initialize Eel with the 'web' folder
 eel.init('web')
+
+
+# Phase 1: Core Boost Engine variables
+monitor_thread = None
+monitoring_active = False
+target_game_exe = ""
+suspended_services_list = []
+
+def monitor_game_process():
+    global monitoring_active, target_game_exe
+
+    # Define priorities based on OS
+    if hasattr(psutil, 'HIGH_PRIORITY_CLASS'):
+        HIGH_PRIO = psutil.HIGH_PRIORITY_CLASS
+        LOW_PRIO = psutil.IDLE_PRIORITY_CLASS
+        NORMAL_PRIO = psutil.NORMAL_PRIORITY_CLASS
+    else:
+        # Fallback for non-Windows (or just ignore if windows only)
+        HIGH_PRIO = -10
+        LOW_PRIO = 10
+        NORMAL_PRIO = 0
+
+    while monitoring_active:
+        found_game = False
+        game_proc = None
+
+        # 1. Find the game process
+        for proc in psutil.process_iter(['name']):
+            try:
+                name = proc.info.get('name')
+                if name and name.lower() == target_game_exe.lower():
+                    found_game = True
+                    game_proc = proc
+                    break
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+        # 2. Adjust priorities
+        if found_game and game_proc:
+            # Set game to high priority
+            try:
+                if game_proc.nice() != HIGH_PRIO:
+                    game_proc.nice(HIGH_PRIO)
+                    try:
+                        eel.add_log(f"Set {target_game_exe} to High Priority")()
+                    except:
+                        pass
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+            # Set background apps to low priority
+            bg_targets = ['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe']
+            for proc in psutil.process_iter(['name']):
+                try:
+                    name = proc.info.get('name')
+                    if name and name.lower() in bg_targets:
+                        if proc.nice() != LOW_PRIO:
+                            proc.nice(LOW_PRIO)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        else:
+            # If game not found, maybe restore priorities (optional, skipping for now to keep simple)
+            pass
+
+        time.sleep(5)
+
+@eel.expose
+def start_monitor(target_exe):
+    global monitor_thread, monitoring_active, target_game_exe
+
+    if not target_exe:
+        return {"status": "error", "message": "No target executable provided."}
+
+    target_game_exe = target_exe
+
+    if monitoring_active:
+        return {"status": "success", "message": f"Already monitoring for {target_exe}"}
+
+    monitoring_active = True
+    monitor_thread = threading.Thread(target=monitor_game_process, daemon=True)
+    monitor_thread.start()
+
+    return {"status": "success", "message": f"Started monitoring for {target_exe}"}
+
+@eel.expose
+def stop_monitor():
+    global monitoring_active
+    monitoring_active = False
+    return {"status": "success", "message": "Stopped monitoring process priorities."}
+
+
+
+@eel.expose
+def suspend_services():
+    global suspended_services_list
+    services_to_suspend = ['Spooler', 'TabletInputService', 'SysMain', 'DiagTrack']
+    suspended = []
+
+    for service in services_to_suspend:
+        try:
+            # CREATE_NO_WINDOW is 0x08000000
+            result = subprocess.run(['sc', 'stop', service], capture_output=True, text=True, creationflags=0x08000000)
+            # sc stop returns 0 on success, or output contains FAILED
+            if result.returncode == 0 or 'SUCCESS' in result.stdout:
+                suspended.append(service)
+            elif '1062' in result.stdout:
+                # 1062 means service has not been started, which is fine
+                pass
+        except Exception:
+            pass
+
+    suspended_services_list.extend(suspended)
+    return {
+        "status": "success",
+        "message": f"Suspended {len(suspended)} non-essential services.",
+        "details": f"Suspended: {', '.join(suspended)}" if suspended else ""
+    }
+
+@eel.expose
+def restore_services():
+    global suspended_services_list
+    restored = []
+
+    for service in suspended_services_list:
+        try:
+            result = subprocess.run(['sc', 'start', service], capture_output=True, text=True, creationflags=0x08000000)
+            if result.returncode == 0 or 'SUCCESS' in result.stdout:
+                restored.append(service)
+        except Exception:
+            pass
+
+    suspended_services_list = []
+    return {
+        "status": "success",
+        "message": f"Restored {len(restored)} services.",
+        "details": f"Restored: {', '.join(restored)}" if restored else ""
+    }
+
+
+@eel.expose
+def purge_ram():
+    """
+    Purges RAM by clearing the working set of all processes the app has access to.
+    """
+    try:
+        if not hasattr(ctypes, 'windll'):
+            return {"status": "error", "message": "RAM Purge is only supported on Windows."}
+
+        # PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION
+        rights = 0x0100 | 0x0400
+
+        # We need to explicitly check if psapi is available
+        if not hasattr(ctypes.windll, 'psapi'):
+            ctypes.windll.LoadLibrary("psapi")
+
+        count = 0
+        for proc in psutil.process_iter(['pid']):
+            try:
+                pid = proc.info.get('pid')
+                if pid:
+                    handle = ctypes.windll.kernel32.OpenProcess(rights, False, pid)
+                    if handle:
+                        ctypes.windll.psapi.EmptyWorkingSet(handle)
+                        ctypes.windll.kernel32.CloseHandle(handle)
+                        count += 1
+            except Exception:
+                pass
+
+        return {"status": "success", "message": f"Successfully purged RAM for {count} processes."}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to purge RAM: {str(e)}"}
 
 @eel.expose
 def boost_game():

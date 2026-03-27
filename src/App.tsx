@@ -22,6 +22,12 @@ export default function App() {
 
   const [autoBoost, setAutoBoost] = useState(false);
 
+  const [targetExe, setTargetExe] = useState('csgo.exe');
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+  const [isServicesSuspended, setIsServicesSuspended] = useState(false);
+
+
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
@@ -127,6 +133,83 @@ export default function App() {
 
   const toggleAutoBoost = () => setAutoBoost(!autoBoost);
 
+  const handleToggleMonitor = async () => {
+    if (!window.eel) {
+      addLog(`[Web Preview] ${isMonitoring ? 'Stopped' : 'Started'} monitoring ${targetExe}`);
+      setIsMonitoring(!isMonitoring);
+      return;
+    }
+
+    if (isMonitoring) {
+      const res = await window.eel.stop_monitor()();
+      if (res.status === 'success') {
+        addLog(res.message);
+        setIsMonitoring(false);
+      } else {
+        addLog(`Error: ${res.message}`, true);
+      }
+    } else {
+      const res = await window.eel.start_monitor(targetExe)();
+      if (res.status === 'success') {
+        addLog(res.message);
+        setIsMonitoring(true);
+      } else {
+        addLog(`Error: ${res.message}`, true);
+      }
+    }
+  };
+
+  const handleToggleServices = async () => {
+    if (!window.eel) {
+      addLog(`[Web Preview] ${isServicesSuspended ? 'Restored' : 'Suspended'} background services`);
+      setIsServicesSuspended(!isServicesSuspended);
+      return;
+    }
+
+    if (isServicesSuspended) {
+      const res = await window.eel.restore_services()();
+      if (res.status === 'success') {
+        addLog(res.message);
+        setIsServicesSuspended(false);
+      } else {
+        addLog(`Error: ${res.message}`, true);
+      }
+    } else {
+      const res = await window.eel.suspend_services()();
+      if (res.status === 'success') {
+        addLog(res.message);
+        setIsServicesSuspended(true);
+      } else {
+        addLog(`Error: ${res.message}`, true);
+      }
+    }
+  };
+
+  const handlePurgeRam = async () => {
+    setIsPurging(true);
+    addLog('Initiating RAM Purge sequence...');
+    if (window.eel) {
+      try {
+        const result = await window.eel.purge_ram()();
+        if (result.status === 'success') {
+          addLog(result.message);
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (error) {
+        addLog(`Failed to purge RAM: ${error}`, true);
+      }
+    } else {
+      setTimeout(() => {
+        addLog('[Web Preview] Successfully purged system RAM.');
+        setIsPurging(false);
+      }, 1000);
+      return;
+    }
+    setIsPurging(false);
+  };
+
+
 
 
   return (
@@ -180,7 +263,64 @@ export default function App() {
           </div>
         </section>
         {/* END: OptimizationSummary */}
-            {/* BEGIN: ProcessesSection */}
+
+        {/* BEGIN: Enhanced Tools Section */}
+        <section className="mb-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          {/* Monitor Card */}
+          <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+            <div>
+              <h3 className="text-white font-bold mb-2">Process Monitor</h3>
+              <p className="text-xs text-gray-400 mb-4">Assigns high priority to your game and lowers background apps.</p>
+              <input
+                type="text"
+                value={targetExe}
+                onChange={(e) => setTargetExe(e.target.value)}
+                placeholder="Game .exe (e.g., csgo.exe)"
+                className="w-full bg-black border border-gray-700 text-white p-2 text-sm rounded mb-4 focus:outline-none focus:border-razer-green"
+              />
+            </div>
+            <button
+              onClick={handleToggleMonitor}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors ${isMonitoring ? 'bg-red-900/50 text-red-400 hover:bg-red-900 border border-red-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
+            >
+              {isMonitoring ? 'Stop Monitor' : 'Start Monitor'}
+            </button>
+          </div>
+
+          {/* Services Card */}
+          <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+            <div>
+              <h3 className="text-white font-bold mb-2">Service Suspension</h3>
+              <p className="text-xs text-gray-400 mb-4">Temporarily disables non-essential Windows services like Print Spooler while you game.</p>
+            </div>
+            <button
+              onClick={handleToggleServices}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors ${isServicesSuspended ? 'bg-green-900/50 text-green-400 hover:bg-green-900 border border-green-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
+            >
+              {isServicesSuspended ? 'Restore Services' : 'Suspend Services'}
+            </button>
+          </div>
+
+          {/* RAM Purge Card */}
+          <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+            <div>
+              <h3 className="text-white font-bold mb-2">RAM Purge</h3>
+              <p className="text-xs text-gray-400 mb-4">Force clears standby memory using EmptyWorkingSet API to free up physical RAM for gaming.</p>
+            </div>
+            <button
+              onClick={handlePurgeRam}
+              disabled={isPurging}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 ${isPurging ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {isPurging ? 'Purging...' : 'Purge RAM'}
+            </button>
+          </div>
+
+        </section>
+        {/* END: Enhanced Tools Section */}
+
+        {/* BEGIN: ProcessesSection */}
         <section>
           <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-2">
             <div className="flex items-center space-x-2">
