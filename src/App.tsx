@@ -517,7 +517,6 @@ function App() {
                 <a className={`transition-colors cursor-pointer ${currentTab === "Library" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Library")}>Library</a>
         <a className={`transition-colors cursor-pointer ${currentTab === "Boost Tab" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Boost Tab")}>Boost</a>
                 <a className={`transition-colors cursor-pointer ${currentTab === "Booster Prime" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Booster Prime")}>Booster Prime</a>
-        <a className={`transition-colors cursor-pointer ${currentTab === "System Booster" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("System Booster")}>System</a>
         <a className={`transition-colors cursor-pointer ${currentTab === "Settings" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Settings")}>Settings</a>
       </nav>
       {/* END: SubNavigation */}
@@ -644,27 +643,7 @@ function App() {
 
 
         {/* Session Analytics Card */}
-        {sessionSummary && (
-          <section className="mb-10 bg-gradient-to-r from-gray-900 to-black p-6 rounded-sm border border-razer-green shadow-lg animate-fade-in relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-razer-green opacity-5 rounded-full blur-3xl transform translate-x-10 -translate-y-10"></div>
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center"><span className="text-razer-green mr-2">📊</span> Session Summary</h2>
-            <p className="text-sm text-gray-300 mb-6 font-medium">Your game just closed. Here is how Nexus Booster improved your session:</p>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="bg-black bg-opacity-50 p-4 rounded border border-gray-800 flex flex-col items-center justify-center transform transition-transform hover:scale-105">
-                <span className="text-3xl font-black text-razer-green mb-1">+{sessionSummary.fps}</span>
-                <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">Avg FPS</span>
-              </div>
-              <div className="bg-black bg-opacity-50 p-4 rounded border border-gray-800 flex flex-col items-center justify-center transform transition-transform hover:scale-105">
-                <span className="text-3xl font-black text-blue-400 mb-1">+{sessionSummary.lows}</span>
-                <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">1% Lows</span>
-              </div>
-              <div className="bg-black bg-opacity-50 p-4 rounded border border-gray-800 flex flex-col items-center justify-center transform transition-transform hover:scale-105">
-                <span className="text-3xl font-black text-purple-400 mb-1">{sessionSummary.ram}</span>
-                <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">GB RAM Cleared</span>
-              </div>
-            </div>
-          </section>
-        )}
+
 
 
 
@@ -908,11 +887,8 @@ function App() {
                 </button>
               </div>
             </div>
-          </div>
-        )}
 
-        {currentTab === 'System Booster' && (
-          <div className="flex flex-col space-y-8">
+            {/* Injected System Booster Tools */}
             <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-blue-500 shadow-lg" data-purpose="clean-system-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6">
@@ -952,6 +928,8 @@ function App() {
             </section>
           </div>
         )}
+
+
 
 
         {currentTab === 'Settings' && (
@@ -1076,6 +1054,56 @@ function App() {
                 className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold py-2 px-6 rounded uppercase tracking-wider transition-colors"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Summary Modal */}
+      {sessionSummary && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-panel-bg w-full max-w-lg rounded-lg shadow-[0_0_30px_rgba(68,214,44,0.15)] border border-razer-green flex flex-col overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-razer-green opacity-5 rounded-full blur-3xl transform translate-x-10 -translate-y-10"></div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-black relative z-10">
+              <h2 className="text-white font-bold text-lg flex items-center"><span className="text-razer-green mr-2">📊</span> Session Summary</h2>
+              <button
+                onClick={() => setSessionSummary(null)}
+                className="text-gray-400 hover:text-white transition-colors p-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 relative z-10">
+              <p className="text-sm text-gray-300 mb-6 font-medium text-center">Your game just closed. Here is how Nexus Booster improved your session:</p>
+
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="bg-black bg-opacity-50 p-4 rounded border border-gray-800 flex flex-col items-center justify-center transform transition-transform hover:scale-105">
+                  <span className="text-3xl font-black text-razer-green mb-1">+{sessionSummary.fps}</span>
+                  <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">Avg FPS</span>
+                </div>
+                <div className="bg-black bg-opacity-50 p-4 rounded border border-gray-800 flex flex-col items-center justify-center transform transition-transform hover:scale-105">
+                  <span className="text-3xl font-black text-blue-400 mb-1">+{sessionSummary.lows}</span>
+                  <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">1% Lows</span>
+                </div>
+                <div className="bg-black bg-opacity-50 p-4 rounded border border-gray-800 flex flex-col items-center justify-center transform transition-transform hover:scale-105">
+                  <span className="text-3xl font-black text-purple-400 mb-1">{sessionSummary.ram}</span>
+                  <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">GB RAM Cleared</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-800 bg-black/50 flex justify-center relative z-10">
+              <button
+                onClick={() => setSessionSummary(null)}
+                className="bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all shadow-[0_0_15px_rgba(68,214,44,0.3)]"
+              >
+                Awesome
               </button>
             </div>
           </div>
