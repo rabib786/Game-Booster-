@@ -82,16 +82,36 @@ def overlay_thread_func():
     hs = overlay_window.winfo_screenheight()
     overlay_window.geometry(f"200x120+{ws-220}+20")
 
-    # Labels
-    cpu_var = tk.StringVar(value="CPU: 0% | 0C")
-    gpu_var = tk.StringVar(value="GPU: 0% | 0C")
-    ram_var = tk.StringVar(value="RAM: 0.0 GB")
-    fps_var = tk.StringVar(value="FPS: N/A")
+    # Transparent background for minimalist look
+    try:
+        overlay_window.wm_attributes("-transparentcolor", "black")
+    except Exception:
+        pass
 
-    tk.Label(overlay_window, textvariable=fps_var, fg="#44d62c", bg="black", font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=2)
-    tk.Label(overlay_window, textvariable=cpu_var, fg="white", bg="black", font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
-    tk.Label(overlay_window, textvariable=gpu_var, fg="white", bg="black", font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
-    tk.Label(overlay_window, textvariable=ram_var, fg="white", bg="black", font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
+    canvas = tk.Canvas(overlay_window, bg='black', highlightthickness=0)
+    canvas.pack(fill=tk.BOTH, expand=True)
+
+    # Store text item IDs to update them later
+    # text format: (shadow_id, main_id)
+    font_large = ("Consolas", 11, "bold")
+    font_small = ("Consolas", 9)
+    shadow_color = "#111111"  # Near-black to show up if transparentcolor is exactly 'black'
+
+    # Create FPS texts
+    fps_shadow = canvas.create_text(11, 11, text="FPS: N/A", anchor="nw", font=font_large, fill=shadow_color)
+    fps_text = canvas.create_text(10, 10, text="FPS: N/A", anchor="nw", font=font_large, fill="#44d62c")
+
+    # Create CPU texts
+    cpu_shadow = canvas.create_text(11, 31, text="CPU: 0% | 0C", anchor="nw", font=font_small, fill=shadow_color)
+    cpu_text = canvas.create_text(10, 30, text="CPU: 0% | 0C", anchor="nw", font=font_small, fill="white")
+
+    # Create GPU texts
+    gpu_shadow = canvas.create_text(11, 46, text="GPU: 0% | 0C", anchor="nw", font=font_small, fill=shadow_color)
+    gpu_text = canvas.create_text(10, 45, text="GPU: 0% | 0C", anchor="nw", font=font_small, fill="white")
+
+    # Create RAM texts
+    ram_shadow = canvas.create_text(11, 61, text="RAM: 0.0 GB", anchor="nw", font=font_small, fill=shadow_color)
+    ram_text = canvas.create_text(10, 60, text="RAM: 0.0 GB", anchor="nw", font=font_small, fill="white")
 
     def update_overlay():
         if not overlay_active:
@@ -109,9 +129,16 @@ def overlay_thread_func():
         except Exception:
             pass
 
-        cpu_var.set(f"CPU: {tel.get('cpu_usage', 0)}% | {cpu_temp_str}")
-        gpu_var.set(f"GPU: {tel.get('gpu_usage', 0)}% | {tel.get('gpu_temp', 0)}C")
-        ram_var.set(f"RAM: {tel.get('ram_usage_gb', 0):.1f} GB")
+        cpu_str = f"CPU: {tel.get('cpu_usage', 0)}% | {cpu_temp_str}"
+        gpu_str = f"GPU: {tel.get('gpu_usage', 0)}% | {tel.get('gpu_temp', 0)}C"
+        ram_str = f"RAM: {tel.get('ram_usage_gb', 0):.1f} GB"
+
+        canvas.itemconfig(cpu_shadow, text=cpu_str)
+        canvas.itemconfig(cpu_text, text=cpu_str)
+        canvas.itemconfig(gpu_shadow, text=gpu_str)
+        canvas.itemconfig(gpu_text, text=gpu_str)
+        canvas.itemconfig(ram_shadow, text=ram_str)
+        canvas.itemconfig(ram_text, text=ram_str)
 
         overlay_window.after(1000, update_overlay)
 
