@@ -21,8 +21,22 @@ describe('App', () => {
     const autoboost = screen.getByText('Auto-Boost');
     fireEvent.click(autoboost);
 
-    // Test passes if no error is thrown
     expect(autoboost).toBeInTheDocument();
   });
 
+  it('handles power plan toggle', async () => {
+    render(<App />);
+    const powerBtn = screen.getByText('Enable High Perf.');
+    fireEvent.click(powerBtn);
+
+    expect(powerBtn).toBeInTheDocument();
+  });
+
+  it('handles network flush click', async () => {
+    render(<App />);
+    const flushBtn = screen.getByText('Flush Network');
+    fireEvent.click(flushBtn);
+
+    expect(screen.getByText('Flushing...')).toBeInTheDocument();
+  });
 });
