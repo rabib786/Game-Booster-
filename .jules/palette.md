@@ -1,0 +1,1 @@
+## 2024-03-28 - Started UX review\n**Learning:** Found multiple opportunities to improve accessibility and UX in the main App.tsx file.\n**Action:** Implementing a high-impact, low-effort UX improvement.

@@ -419,11 +419,11 @@ function App() {
       {/* BEGIN: SubNavigation */}
       <nav className="bg-header-bg px-8 py-2 flex items-center space-x-8 text-sm font-semibold uppercase tracking-wider" data-purpose="booster-sub-nav">
         <div className="flex items-center space-x-2 text-gray-500 mr-4">
-          <button className="hover:text-white">&lt;</button>
-          <button className="hover:text-white">&gt;</button>
+          <button className="hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green rounded px-1" aria-label="Previous tab">&lt;</button>
+          <button className="hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green rounded px-1" aria-label="Next tab">&gt;</button>
         </div>
-        <a className={`transition-colors cursor-pointer ${currentTab === "Game Booster" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Game Booster")}>Boost</a>
-        <a className={`transition-colors cursor-pointer ${currentTab === "Booster Prime" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Booster Prime")}>Booster Prime</a>
+        <button className={`transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green rounded ${currentTab === "Game Booster" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Game Booster")}>Boost</button>
+        <button className={`transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green rounded ${currentTab === "Booster Prime" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Booster Prime")}>Booster Prime</button>
       </nav>
       {/* END: SubNavigation */}
 
@@ -512,13 +512,19 @@ function App() {
             </div>
           </div>
           <div className="flex items-center space-x-8">
-            <div className="flex items-center space-x-3 cursor-pointer" onClick={toggleAutoBoost}>
+            <button
+              className="flex items-center space-x-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green rounded"
+              onClick={toggleAutoBoost}
+              role="switch"
+              aria-checked={autoBoost}
+              aria-label="Toggle Auto-Boost"
+            >
               <span className="text-xs font-bold uppercase text-gray-400">Auto-Boost</span>
               {/* Toggle Switch */}
               <div className={`w-10 h-5 rounded-full relative transition-colors ${autoBoost ? 'bg-razer-green' : 'bg-gray-600'}`}>
                 <div className={`absolute top-1 w-3 h-3 bg-black rounded-full transition-all ${autoBoost ? 'right-1' : 'left-1'}`}></div>
               </div>
-            </div>
+            </button>
             <button
               onClick={handleBoost}
               disabled={isBoosting}
