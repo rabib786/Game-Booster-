@@ -12,7 +12,23 @@ declare global {
   }
 }
 
-export default function App() {
+interface GameProfile {
+  high_priority: boolean;
+  network_flush: boolean;
+  power_plan: boolean;
+  suspend_services: boolean;
+}
+
+interface Game {
+  id: string;
+  title: string;
+  exe_path: string;
+  exe_name: string;
+  icon_path: string | null;
+  profile: GameProfile;
+}
+
+function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
   const [currentTab, setCurrentTab] = useState<'Game Booster' | 'System Booster'>('Game Booster');
@@ -47,6 +63,49 @@ export default function App() {
 
   const addLog = (msg: string, isError = false) => {
     setLogs(prev => [...prev, `> ${msg}`]);
+  };
+
+
+
+  const handleLaunchGame = async (game: Game) => {
+    addLog(`Starting launch sequence for ${game.title}...`);
+    try {
+      if (window.eel) {
+        const response = await window.eel.launch_game(game.id, game.profile, game.exe_path, game.exe_name)();
+        if (response.status === 'success') {
+          addLog(`Launch success: ${response.details}`);
+
+          // Sync UI states based on profile
+          if (game.profile.high_priority) {
+            setIsMonitoring(true);
+            setTargetExe(game.exe_name);
+          }
+          if (game.profile.suspend_services) setIsServicesSuspended(true);
+
+        } else {
+          addLog(`Launch failed: ${response.message}`);
+        }
+      }
+    } catch (error) {
+      addLog(`Error: ${error}`);
+    }
+  };
+
+  const toggleProfileSetting = (settingKey: keyof GameProfile) => {
+    if (!selectedGameProfile) return;
+
+    const updatedGame = {
+      ...selectedGameProfile,
+      profile: {
+        ...selectedGameProfile.profile,
+        [settingKey]: !selectedGameProfile.profile[settingKey]
+      }
+    };
+
+    setSelectedGameProfile(updatedGame);
+
+    // Update main array
+    setInstalledGames(prev => prev.map(g => g.id === updatedGame.id ? updatedGame : g));
   };
 
 
@@ -523,3 +582,5 @@ export default function App() {
     </div>
   );
 }
+
+export default App;
