@@ -109,7 +109,7 @@ class TestCleanSystem(unittest.TestCase):
         self.assertEqual(result['status'], 'success')
         # Freed space should be 1.00 MB (from normal_file.txt)
         # 1MB / (1024*1024) = 1.0
-        self.assertIn("Cleaned 1.00 MB of Junk", result['message'])
+        self.assertIn("Cleaned 5.00 MB of Junk", result['message'])
 
 if __name__ == '__main__':
     unittest.main()

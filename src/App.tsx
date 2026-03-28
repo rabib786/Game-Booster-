@@ -41,6 +41,8 @@ function App() {
   const [targetExe, setTargetExe] = useState('csgo.exe');
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
+  const [isTweaking, setIsTweaking] = useState(false);
+  const [sessionSummary, setSessionSummary] = useState<{fps: number, lows: number, ram: number} | null>(null);
   const [isServicesSuspended, setIsServicesSuspended] = useState(false);
   const [isPowerPlanHigh, setIsPowerPlanHigh] = useState(false);
   const [isFlushingNetwork, setIsFlushingNetwork] = useState(false);
@@ -195,31 +197,58 @@ function App() {
   const toggleAutoBoost = () => setAutoBoost(!autoBoost);
 
   const handleToggleMonitor = async () => {
-    if (!window.eel) {
-      addLog(`[Web Preview] ${isMonitoring ? 'Stopped' : 'Started'} monitoring ${targetExe}`);
-      setIsMonitoring(!isMonitoring);
-      return;
-    }
-
     if (isMonitoring) {
-      const res = await window.eel.stop_monitor()();
-      if (res.status === 'success') {
-        addLog(res.message);
-        setIsMonitoring(false);
+      setIsMonitoring(false);
+      addLog(`Stopped monitoring ${targetExe}. Reverting priority...`);
+      if (window.eel) {
+        try {
+          await window.eel.stop_monitor()();
+          const summaryData = await window.eel.get_session_summary()();
+          if (summaryData && summaryData.status === 'success') {
+            addLog(summaryData.message);
+            setSessionSummary({
+              fps: summaryData.details.avg_fps_gain,
+              lows: summaryData.details['1_percent_lows_gain'],
+              ram: summaryData.details.ram_cleared_gb
+            });
+          }
+        } catch (error) {
+          addLog(`Failed to communicate with backend: ${error}`, true);
+        }
       } else {
-        addLog(`Error: ${res.message}`, true);
+        setTimeout(() => {
+          setSessionSummary({
+            fps: 12,
+            lows: 5,
+            ram: 1.4
+          });
+          addLog('[Web Preview] Session ended. You gained an average of 12 FPS and cleared 1.4GB of RAM this session!');
+        }, 500);
       }
     } else {
-      const res = await window.eel.start_monitor(targetExe)();
-      if (res.status === 'success') {
-        addLog(res.message);
-        setIsMonitoring(true);
-      } else {
-        addLog(`Error: ${res.message}`, true);
+      if (!targetExe.trim()) {
+        addLog('Error: Please enter a target executable name.', true);
+        return;
+      }
+      setIsMonitoring(true);
+      setSessionSummary(null); // Clear previous summary
+      addLog(`Started monitoring for ${targetExe}. Process priority will be elevated.`);
+      if (window.eel) {
+        try {
+          const result = await window.eel.start_monitor(targetExe)();
+          if (result.status === 'success') {
+            addLog(result.message);
+          } else {
+            addLog(`Error: ${result.message}`, true);
+            setIsMonitoring(false);
+          }
+        } catch (error) {
+          addLog(`Failed to communicate with backend: ${error}`, true);
+          setIsMonitoring(false);
+        }
       }
     }
   };
-
   const handleToggleServices = async () => {
     if (!window.eel) {
       addLog(`[Web Preview] ${isServicesSuspended ? 'Restored' : 'Suspended'} background services`);
@@ -244,6 +273,35 @@ function App() {
         addLog(`Error: ${res.message}`, true);
       }
     }
+  };
+
+
+  const handleTweakGame = async (gameName: string) => {
+    setIsTweaking(true);
+    addLog(`Applying Booster Prime settings for ${gameName}...`);
+    if (window.eel) {
+      try {
+        const result = await window.eel.tweak_game_settings(gameName)();
+        if (result.status === 'success') {
+          addLog(result.message);
+          if (result.details) {
+            addLog(`Tweaks applied: ${result.details}`);
+          }
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (error) {
+        addLog(`Failed to communicate with backend: ${error}`, true);
+      }
+    } else {
+      setTimeout(() => {
+        addLog(`[Web Preview] Applied Booster Prime settings for ${gameName}.`);
+        addLog('Tweaks applied: Enabled DLSS, Disabled V-Sync');
+        setIsTweaking(false);
+      }, 1000);
+      return;
+    }
+    setIsTweaking(false);
   };
 
   const handlePurgeRam = async () => {
@@ -333,8 +391,8 @@ function App() {
           <button className="hover:text-white">&lt;</button>
           <button className="hover:text-white">&gt;</button>
         </div>
-        <a className="text-razer-green border-b-2 border-razer-green pb-1" href="#">Boost</a>
-        <a className="text-gray-500 hover:text-white transition-colors" href="#">Booster Prime</a>
+        <a className={`transition-colors cursor-pointer ${currentTab === "Game Booster" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Game Booster")}>Boost</a>
+        <a className={`transition-colors cursor-pointer ${currentTab === "Booster Prime" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Booster Prime")}>Booster Prime</a>
       </nav>
       {/* END: SubNavigation */}
 
@@ -343,6 +401,30 @@ function App() {
 
         {currentTab === 'Game Booster' && (
           <>
+
+        {/* Session Analytics Card */}
+        {sessionSummary && (
+          <section className="mb-10 bg-gradient-to-r from-gray-900 to-black p-6 rounded-sm border border-razer-green shadow-lg animate-fade-in relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-razer-green opacity-5 rounded-full blur-3xl transform translate-x-10 -translate-y-10"></div>
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center"><span className="text-razer-green mr-2">📊</span> Session Summary</h2>
+            <p className="text-sm text-gray-300 mb-6 font-medium">Your game just closed. Here is how Nexus Booster improved your session:</p>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="bg-black bg-opacity-50 p-4 rounded border border-gray-800 flex flex-col items-center justify-center transform transition-transform hover:scale-105">
+                <span className="text-3xl font-black text-razer-green mb-1">+{sessionSummary.fps}</span>
+                <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">Avg FPS</span>
+              </div>
+              <div className="bg-black bg-opacity-50 p-4 rounded border border-gray-800 flex flex-col items-center justify-center transform transition-transform hover:scale-105">
+                <span className="text-3xl font-black text-blue-400 mb-1">+{sessionSummary.lows}</span>
+                <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">1% Lows</span>
+              </div>
+              <div className="bg-black bg-opacity-50 p-4 rounded border border-gray-800 flex flex-col items-center justify-center transform transition-transform hover:scale-105">
+                <span className="text-3xl font-black text-purple-400 mb-1">{sessionSummary.ram}</span>
+                <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">GB RAM Cleared</span>
+              </div>
+            </div>
+          </section>
+        )}
+
             {/* BEGIN: OptimizationSummary */}
         <section className="flex items-center justify-between mb-10 bg-panel-bg p-6 rounded-sm border-l-4 border-razer-green shadow-lg" data-purpose="summary-card">
           <div className="flex items-center space-x-6">
@@ -521,6 +603,53 @@ function App() {
           </>
         )}
 
+
+
+        {currentTab === 'Booster Prime' && (
+          <div className="flex flex-col space-y-8 animate-fade-in">
+            <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-yellow-500 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <div className="text-yellow-500 text-3xl">🔥</div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-white">Booster Prime</h1>
+                    <p className="text-sm text-gray-500 font-medium">Automatically apply the best competitive settings for popular games.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-white font-bold mb-2">Cyberpunk 2077</h3>
+                  <p className="text-xs text-gray-400 mb-4">Enables DLSS and disables V-Sync for maximum framerates.</p>
+                </div>
+                <button
+                  onClick={() => handleTweakGame('Cyberpunk 2077')}
+                  disabled={isTweaking}
+                  className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isTweaking ? 'Optimizing...' : 'Optimize Cyberpunk'}
+                </button>
+              </div>
+
+              <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-white font-bold mb-2">Warzone</h3>
+                  <p className="text-xs text-gray-400 mb-4">Enables DLSS and disables V-Sync for competitive advantage.</p>
+                </div>
+                <button
+                  onClick={() => handleTweakGame('Warzone')}
+                  disabled={isTweaking}
+                  className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isTweaking ? 'Optimizing...' : 'Optimize Warzone'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {currentTab === 'System Booster' && (
           <div className="flex flex-col space-y-8">
