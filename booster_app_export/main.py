@@ -6,6 +6,8 @@ import os
 import threading
 import time
 import subprocess
+import atexit
+import signal
 
 try:
     import winreg
@@ -16,11 +18,47 @@ except ImportError:
 eel.init('web')
 
 
+
 # Phase 1: Core Boost Engine variables
 monitor_thread = None
 monitoring_active = False
 target_game_exe = ""
 suspended_services_list = []
+
+# --- Emergency Restore Hooks & State Persistence ---
+def exit_handler():
+    # Automatically restore any suspended services on application exit or crash.
+    global suspended_services_list
+    if suspended_services_list:
+        try:
+            restore_services()
+        except Exception:
+            pass
+
+def signal_handler(sig, frame):
+    exit_handler()
+    sys.exit(0)
+
+def global_exception_handler(exc_type, exc_value, exc_traceback):
+    # Log exception if needed, then restore services.
+    exit_handler()
+    # Call the default exception handler
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+# Register atexit
+atexit.register(exit_handler)
+
+# Register signals (SIGTERM, SIGINT)
+try:
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+except Exception:
+    pass
+
+# Register global exception hook
+sys.excepthook = global_exception_handler
+# ---------------------------------------------------
+
 
 def monitor_game_process():
     global monitoring_active, target_game_exe
@@ -65,10 +103,31 @@ def monitor_game_process():
                 pass
 
             # Set background apps to low priority
+
+            # Whitelist critical system processes and our own process tree
+            critical_processes = [
+                'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
+                'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
+                'spoolsv.exe', 'svchost.exe', 'taskmgr.exe'
+            ]
+            whitelist_pids = set()
+            try:
+                current_process = psutil.Process()
+                whitelist_pids.add(current_process.pid)
+                for child in current_process.children(recursive=True):
+                    whitelist_pids.add(child.pid)
+            except Exception:
+                pass
+
+            # Set background apps to low priority
             bg_targets = ['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe']
             for proc in psutil.process_iter(['name']):
                 try:
                     name = proc.info.get('name')
+                    if proc.pid in whitelist_pids:
+                        continue
+                    if name and name.lower() in critical_processes:
+                        continue
                     if name and name.lower() in bg_targets:
                         if proc.nice() != LOW_PRIO:
                             proc.nice(LOW_PRIO)
