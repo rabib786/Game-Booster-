@@ -97,6 +97,33 @@ function App() {
     }
   };
 
+
+  const handleScanGames = async () => {
+    addLog('Scanning for installed games...');
+    if (window.eel) {
+      try {
+        const games = await window.eel.scan_games()();
+        setInstalledGames(games);
+        addLog(`Found ${games.length} games.`);
+      } catch (error) {
+        addLog(`Error scanning games: ${error}`);
+      }
+    }
+  };
+
+
+  const handleToggleOverlay = async () => {
+    addLog('Toggling performance overlay...');
+    if (window.eel) {
+      try {
+        const response = await window.eel.toggle_overlay()();
+        addLog(response.message);
+      } catch (error) {
+        addLog(`Error toggling overlay: ${error}`);
+      }
+    }
+  };
+
   const toggleProfileSetting = (settingKey: keyof GameProfile) => {
     if (!selectedGameProfile) return;
 
@@ -429,6 +456,47 @@ function App() {
           </section>
         )}
 
+
+        {/* Games Section */}
+        <section className="mb-10">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white flex items-center">
+              <span className="text-razer-green mr-2">🎮</span> My Games
+            </h2>
+            <button
+              onClick={handleScanGames}
+              className="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded text-sm uppercase tracking-wider transition-colors border border-gray-700"
+            >
+              Scan Games
+            </button>
+          </div>
+
+          {installedGames.length === 0 ? (
+            <div className="bg-panel-bg p-8 rounded border border-gray-800 text-center">
+              <p className="text-gray-500 mb-2">No games found.</p>
+              <p className="text-xs text-gray-600">Click Scan Games to search your Steam library.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {installedGames.map(game => (
+                <div key={game.id} className="bg-panel-bg p-4 rounded border border-gray-800 hover:border-razer-green transition-colors flex items-center space-x-4 cursor-pointer" onClick={() => handleLaunchGame(game)}>
+                  <div className="w-12 h-12 bg-gray-900 rounded flex items-center justify-center overflow-hidden">
+                    {game.icon_path ? (
+                      <img src={game.icon_path} alt={game.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-2xl">🕹️</span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm truncate w-40">{game.title}</h3>
+                    <p className="text-xs text-razer-green">Click to Launch & Boost</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
             {/* BEGIN: OptimizationSummary */}
         <section className="flex items-center justify-between mb-10 bg-panel-bg p-6 rounded-sm border-l-4 border-razer-green shadow-lg" data-purpose="summary-card">
           <div className="flex items-center space-x-6">
@@ -526,6 +594,21 @@ function App() {
               className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors ${isServicesSuspended ? 'bg-green-900/50 text-green-400 hover:bg-green-900 border border-green-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
             >
               {isServicesSuspended ? 'Restore Services' : 'Suspend Services'}
+            </button>
+          </div>
+
+
+          {/* Overlay Card */}
+          <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+            <div>
+              <h3 className="text-white font-bold mb-2">Performance Overlay</h3>
+              <p className="text-xs text-gray-400 mb-4">Toggle the on-screen display for FPS, CPU, and RAM metrics while gaming.</p>
+            </div>
+            <button
+              onClick={handleToggleOverlay}
+              className="w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
+            >
+              Toggle Overlay
             </button>
           </div>
 
