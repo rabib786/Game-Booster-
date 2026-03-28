@@ -902,6 +902,28 @@ if __name__ == '__main__':
 
 
 
+
+SUPPORTED_PRIME_GAMES = {
+    "Cyberpunk 2077": "Enables DLSS and disables V-Sync for maximum framerates.",
+    "Warzone": "Enables DLSS and disables V-Sync for competitive advantage.",
+    "Call of Duty: Warzone": "Enables DLSS and disables V-Sync for competitive advantage."
+}
+
+@eel.expose
+def get_prime_games():
+    installed = scan_games()
+    prime_games = []
+    for game in installed:
+        for supported_title, desc in SUPPORTED_PRIME_GAMES.items():
+            if supported_title.lower() in game.get('title', '').lower():
+                prime_games.append({
+                    "id": game.get('id'),
+                    "name": game.get('title'),
+                    "primeDescription": desc
+                })
+                break
+    return prime_games
+
 @eel.expose
 def scan_games():
     """
