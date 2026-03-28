@@ -61,9 +61,11 @@ function App() {
 
 
 
+  // Fetch supported games dynamically from the Python backend
   useEffect(() => {
     if (currentTab === 'Booster Prime') {
       const fetchPrimeGames = async () => {
+        // Fetch supported games dynamically from the Python backend
         if (window.eel) {
           try {
             const games = await window.eel.get_prime_games()();
@@ -72,7 +74,7 @@ function App() {
             console.error(`Error fetching Prime games: ${error}`);
           }
         } else {
-          // Mock
+          // Mock fallback
           setTimeout(() => {
             setPrimeGames([
               { id: 'mock_cp', name: 'Cyberpunk 2077', primeDescription: 'Enables DLSS and disables V-Sync for maximum framerates.' },
@@ -886,27 +888,27 @@ function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {primeGames.length > 0 ? (
-                  primeGames.map((game) => (
-                      <div key={game.id} className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
-                        <div>
-                          <h3 className="text-white font-bold mb-2">{game.name}</h3>
-                          <p className="text-xs text-gray-400 mb-4">{game.primeDescription}</p>
-                        </div>
-                        <button
-                          onClick={() => handleTweakGame(game.name)}
-                          disabled={isTweaking}
-                          className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          {isTweaking ? 'Optimizing...' : `Optimize ${game.name}`}
-                        </button>
-                      </div>
-                  ))
-              ) : (
-                  <div className="col-span-full text-center p-8 bg-panel-bg rounded border border-gray-800">
-                    <span className="text-3xl opacity-50 block mb-2">🎮</span>
-                    <p className="text-gray-400">No supported Booster Prime games found on this system.</p>
-                    <p className="text-sm text-gray-600 mt-2">Install a supported game to see optimization options here.</p>
+                primeGames.map((game) => (
+                  <div key={game.id} className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-white font-bold mb-2">{game.name}</h3>
+                      <p className="text-xs text-gray-400 mb-4">{game.primeDescription}</p>
+                    </div>
+                    <button
+                      onClick={() => handleTweakGame(game.name)}
+                      disabled={isTweaking}
+                      className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {isTweaking ? 'Optimizing...' : `Optimize ${game.name}`}
+                    </button>
                   </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center p-8 bg-panel-bg rounded border border-gray-800">
+                  <span className="text-3xl opacity-50 block mb-2">🎮</span>
+                  <p className="text-gray-400">No supported Booster Prime games found on this system.</p>
+                  <p className="text-sm text-gray-600 mt-2">Install a supported game to see optimization options here.</p>
+                </div>
               )}
             </div>
 

@@ -913,6 +913,7 @@ SUPPORTED_PRIME_GAMES = {
 def get_prime_games():
     installed = scan_games()
     prime_games = []
+
     for game in installed:
         for supported_title, desc in SUPPORTED_PRIME_GAMES.items():
             if supported_title.lower() in game.get('title', '').lower():
@@ -922,6 +923,7 @@ def get_prime_games():
                     "primeDescription": desc
                 })
                 break
+
     return prime_games
 
 @eel.expose
