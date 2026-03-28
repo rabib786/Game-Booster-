@@ -791,7 +791,7 @@ def setup_tray():
         icon.stop()
         sys.exit(0)
 
-    menu = (item('Show', on_show, default=True), item('Quit', on_quit))
+    menu = (item('Open Dashboard', on_show, default=True), item('Exit', on_quit))
     tray_icon = pystray.Icon("Booster", create_image(), "Nexus Booster", menu)
     tray_icon.run()
 
