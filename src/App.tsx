@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Settings, Play, X } from 'lucide-react';
 
 // Declare eel for TypeScript
 declare global {
@@ -17,6 +18,7 @@ interface GameProfile {
   network_flush: boolean;
   power_plan: boolean;
   suspend_services: boolean;
+  ram_purge: boolean;
 }
 
 interface Game {
@@ -31,7 +33,7 @@ interface Game {
 function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
-  const [currentTab, setCurrentTab] = useState<'Boost Tab' | 'System Booster' | 'Booster Prime'>('Boost Tab');
+  const [currentTab, setCurrentTab] = useState<'Library' | 'Boost Tab' | 'System Booster' | 'Booster Prime'>('Library');
   const [isCleaning, setIsCleaning] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -108,6 +110,40 @@ function App() {
       } catch (error) {
         addLog(`Error scanning games: ${error}`);
       }
+    } else {
+      setTimeout(() => {
+        setInstalledGames([
+          {
+            id: 'mock_1',
+            title: 'Mock Game 1',
+            exe_path: 'C:\\mock\\game1.exe',
+            exe_name: 'game1.exe',
+            icon_path: null,
+            profile: {
+              high_priority: true,
+              network_flush: true,
+              power_plan: true,
+              suspend_services: true,
+              ram_purge: true
+            }
+          },
+          {
+            id: 'mock_2',
+            title: 'Mock Game 2',
+            exe_path: 'C:\\mock\\game2.exe',
+            exe_name: 'game2.exe',
+            icon_path: null,
+            profile: {
+              high_priority: false,
+              network_flush: false,
+              power_plan: false,
+              suspend_services: false,
+              ram_purge: false
+            }
+          }
+        ]);
+        addLog('Found 2 mock games.');
+      }, 500);
     }
   };
 
@@ -425,6 +461,7 @@ function App() {
           <button className="hover:text-white">&lt;</button>
           <button className="hover:text-white">&gt;</button>
         </div>
+                <a className={`transition-colors cursor-pointer ${currentTab === "Library" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Library")}>Library</a>
         <a className={`transition-colors cursor-pointer ${currentTab === "Boost Tab" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Boost Tab")}>Boost</a>
         <a className={`transition-colors cursor-pointer ${currentTab === "Booster Prime" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Booster Prime")}>Booster Prime</a>
       </nav>
@@ -432,6 +469,69 @@ function App() {
 
       {/* BEGIN: MainContent */}
 <main className="flex-1 overflow-y-auto p-8 custom-scrollbar" data-purpose="dashboard-content">
+
+        {currentTab === 'Library' && (
+          <div className="animate-fade-in flex flex-col space-y-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-white flex items-center">
+                <span className="text-razer-green mr-3">📚</span> My Library
+              </h2>
+              <button
+                onClick={handleScanGames}
+                className="bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)]"
+              >
+                Scan Games
+              </button>
+            </div>
+
+            {installedGames.length === 0 ? (
+              <div className="bg-panel-bg p-12 rounded border border-gray-800 text-center flex flex-col items-center justify-center space-y-4">
+                <span className="text-5xl opacity-50">🎮</span>
+                <p className="text-gray-400 text-lg">No games found in your library.</p>
+                <p className="text-sm text-gray-600">Click the Scan Games button to automatically find Steam titles.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {installedGames.map(game => (
+                  <div key={game.id} className="group bg-panel-bg rounded border border-gray-800 hover:border-razer-green transition-all duration-300 overflow-hidden relative flex flex-col h-48 shadow-lg">
+                    {/* Background Pattern/Gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-gray-800/20 to-black/60 z-0"></div>
+
+                    {/* Card Content */}
+                    <div className="relative z-10 p-5 flex-1 flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 bg-gray-900 rounded-lg shadow-inner flex items-center justify-center overflow-hidden mb-3 border border-gray-700 group-hover:border-razer-green/50 transition-colors">
+                        {game.icon_path ? (
+                          <img src={game.icon_path} alt={game.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-3xl opacity-70">🕹️</span>
+                        )}
+                      </div>
+                      <h3 className="text-white font-bold text-center w-full truncate px-2">{game.title}</h3>
+                    </div>
+
+                    {/* Hover Overlay with Actions */}
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 flex flex-col items-center justify-center space-y-3">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleLaunchGame(game); }}
+                        className="bg-razer-green hover:bg-green-400 text-black font-black py-2 px-8 rounded-full text-sm uppercase tracking-wider transform hover:scale-105 transition-all shadow-[0_0_15px_rgba(68,214,44,0.4)] flex items-center space-x-2"
+                      >
+                        <Play size={16} fill="currentColor" />
+                        <span>Play & Boost</span>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedGameProfile(game); }}
+                        className="text-gray-300 hover:text-white flex items-center space-x-2 text-xs uppercase tracking-widest font-bold transition-colors"
+                      >
+                        <Settings size={14} />
+                        <span>Configure Profile</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {currentTab === 'Boost Tab' && (
           <>
@@ -460,45 +560,7 @@ function App() {
         )}
 
 
-        {/* Games Section */}
-        <section className="mb-10">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-white flex items-center">
-              <span className="text-razer-green mr-2">🎮</span> My Games
-            </h2>
-            <button
-              onClick={handleScanGames}
-              className="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded text-sm uppercase tracking-wider transition-colors border border-gray-700"
-            >
-              Scan Games
-            </button>
-          </div>
 
-          {installedGames.length === 0 ? (
-            <div className="bg-panel-bg p-8 rounded border border-gray-800 text-center">
-              <p className="text-gray-500 mb-2">No games found.</p>
-              <p className="text-xs text-gray-600">Click Scan Games to search your Steam library.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {installedGames.map(game => (
-                <div key={game.id} className="bg-panel-bg p-4 rounded border border-gray-800 hover:border-razer-green transition-colors flex items-center space-x-4 cursor-pointer" onClick={() => handleLaunchGame(game)}>
-                  <div className="w-12 h-12 bg-gray-900 rounded flex items-center justify-center overflow-hidden">
-                    {game.icon_path ? (
-                      <img src={game.icon_path} alt={game.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-2xl">🕹️</span>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm truncate w-40">{game.title}</h3>
-                    <p className="text-xs text-razer-green">Click to Launch & Boost</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
 
             {/* BEGIN: OptimizationSummary */}
         <section className="flex items-center justify-between mb-10 bg-panel-bg p-6 rounded-sm border-l-4 border-razer-green shadow-lg" data-purpose="summary-card">
@@ -799,6 +861,63 @@ function App() {
       </main>
       {/* END: MainContent */}
 
+
+      {/* Profile Configuration Modal */}
+      {selectedGameProfile && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-panel-bg w-full max-w-md rounded-lg shadow-2xl border border-gray-800 flex flex-col overflow-hidden animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-black">
+              <h2 className="text-white font-bold text-lg">{selectedGameProfile.title} Profile</h2>
+              <button
+                onClick={() => setSelectedGameProfile(null)}
+                className="text-gray-400 hover:text-white transition-colors p-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-400 mb-6">Select which optimizations apply when launching this game.</p>
+
+              {/* Toggles */}
+              {[
+                { key: 'high_priority', label: 'High Priority Mode', desc: 'Elevates game priority and lowers background apps.' },
+                { key: 'network_flush', label: 'Network Flush', desc: 'Clears DNS cache and resets IP stack for lower ping.' },
+                { key: 'power_plan', label: 'High Performance Plan', desc: 'Forces Windows power plan to maximize CPU clocks.' },
+                { key: 'suspend_services', label: 'Suspend Services', desc: 'Pauses non-essential Windows background services.' },
+                { key: 'ram_purge', label: 'Purge RAM', desc: 'Clears standby memory to free up physical RAM.' }
+              ].map((setting) => (
+                <div key={setting.key} className="flex items-center justify-between py-2 border-b border-gray-800/50 last:border-0">
+                  <div className="flex-1 pr-4">
+                    <h3 className="text-gray-200 text-sm font-bold">{setting.label}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">{setting.desc}</p>
+                  </div>
+                  <button
+                    onClick={() => toggleProfileSetting(setting.key as keyof GameProfile)}
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${selectedGameProfile.profile[setting.key as keyof GameProfile] ? 'bg-razer-green' : 'bg-gray-600'}`}
+                  >
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-black transition-transform ${selectedGameProfile.profile[setting.key as keyof GameProfile] ? 'translate-x-6' : 'translate-x-1'}`}
+                    />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-800 bg-black/50 flex justify-end">
+              <button
+                onClick={() => setSelectedGameProfile(null)}
+                className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold py-2 px-6 rounded uppercase tracking-wider transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

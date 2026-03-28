@@ -891,7 +891,8 @@ def scan_games():
                     "high_priority": True,
                     "network_flush": True,
                     "power_plan": True,
-                    "suspend_services": True
+                    "suspend_services": True,
+                    "ram_purge": True
                 }
             },
             {
@@ -904,7 +905,8 @@ def scan_games():
                     "high_priority": False,
                     "network_flush": False,
                     "power_plan": False,
-                    "suspend_services": False
+                    "suspend_services": False,
+                    "ram_purge": False
                 }
             }
         ]
@@ -985,7 +987,8 @@ def scan_games():
                                     "high_priority": True,
                                     "network_flush": True,
                                     "power_plan": True,
-                                    "suspend_services": True
+                                    "suspend_services": True,
+                                    "ram_purge": True
                                 }
                             })
             except Exception:
@@ -1003,11 +1006,16 @@ def launch_game(game_id, profile, exe_path, exe_name):
       "high_priority": True,
       "network_flush": True,
       "power_plan": True,
-      "suspend_services": True
+      "suspend_services": True,
+      "ram_purge": True
     }
     """
     try:
         details = []
+
+        if profile.get('ram_purge'):
+            purge_ram()
+            details.append("RAM Purged.")
 
         if profile.get('power_plan'):
             set_power_plan('high_performance')
