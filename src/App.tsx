@@ -31,12 +31,16 @@ interface Game {
 function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
-  const [currentTab, setCurrentTab] = useState<'Game Booster' | 'System Booster'>('Game Booster');
+  const [currentTab, setCurrentTab] = useState<'Game Booster' | 'System Booster' | 'Booster Prime'>('Game Booster');
   const [isCleaning, setIsCleaning] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const [autoBoost, setAutoBoost] = useState(false);
+
+
+  const [selectedGameProfile, setSelectedGameProfile] = useState<Game | null>(null);
+  const [installedGames, setInstalledGames] = useState<Game[]>([]);
 
   const [targetExe, setTargetExe] = useState('csgo.exe');
   const [isMonitoring, setIsMonitoring] = useState(false);

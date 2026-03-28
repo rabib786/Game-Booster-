@@ -253,6 +253,17 @@ def monitor_game_process():
         LOW_PRIO = 10
         NORMAL_PRIO = 0
 
+    # CPU Core Affinity Isolation
+    try:
+        total_cores = psutil.cpu_count(logical=True)
+        if total_cores is None:
+            total_cores = 1 # Fallback
+        all_cores = list(range(total_cores))
+        bg_cores = list(range(max(0, total_cores - 2), total_cores))
+    except Exception:
+        all_cores = None
+        bg_cores = None
+
     while monitoring_active:
         found_game = False
         game_proc = None
@@ -270,6 +281,21 @@ def monitor_game_process():
 
         # 2. Adjust priorities
         if found_game and game_proc:
+            # ISLC Logic: Check free memory during gameplay
+            try:
+                mem = psutil.virtual_memory()
+                if mem.free < 1024 * 1024 * 1024: # 1024MB
+                    try:
+                        purge_ram()
+                        try:
+                            eel.add_log("ISLC triggered: Free memory < 1024MB. Purged RAM.")()
+                        except:
+                            pass
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
             # Set game to high priority
             try:
                 if game_proc.nice() != HIGH_PRIO:
@@ -281,7 +307,18 @@ def monitor_game_process():
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
-            # Set background apps to low priority
+            # Set game affinity to all cores
+            if all_cores:
+                try:
+                    current_affinity = game_proc.cpu_affinity()
+                    if set(current_affinity) != set(all_cores):
+                        game_proc.cpu_affinity(all_cores)
+                        try:
+                            eel.add_log(f"Set {target_game_exe} core affinity to all cores")()
+                        except:
+                            pass
+                except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
+                    pass
 
             # Whitelist critical system processes and our own process tree
             critical_processes = [
@@ -298,7 +335,7 @@ def monitor_game_process():
             except Exception:
                 pass
 
-            # Set background apps to low priority
+            # Set background apps to low priority and restrict core affinity
             bg_targets = ['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe']
             for proc in psutil.process_iter(['name']):
                 try:
@@ -310,6 +347,15 @@ def monitor_game_process():
                     if name and name.lower() in bg_targets:
                         if proc.nice() != LOW_PRIO:
                             proc.nice(LOW_PRIO)
+
+                        if bg_cores:
+                            try:
+                                current_affinity = proc.cpu_affinity()
+                                if set(current_affinity) != set(bg_cores):
+                                    proc.cpu_affinity(bg_cores)
+                            except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
+                                pass
+
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
         else:
@@ -317,6 +363,7 @@ def monitor_game_process():
             pass
 
         time.sleep(5)
+
 
 @eel.expose
 def start_monitor(target_exe):
