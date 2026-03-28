@@ -74,10 +74,7 @@ function App() {
         } else {
           // Mock
           setTimeout(() => {
-            setPrimeGames([
-              { id: 'mock_cp', name: 'Cyberpunk 2077', primeDescription: 'Enables DLSS and disables V-Sync for maximum framerates.' },
-              { id: 'mock_wz', name: 'Warzone', primeDescription: 'Enables DLSS and disables V-Sync for competitive advantage.' }
-            ]);
+            setPrimeGames([]); // No supported games installed in web preview
           }, 500);
         }
       };
