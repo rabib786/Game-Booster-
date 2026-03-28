@@ -43,6 +43,8 @@ function App() {
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const [autoBoost, setAutoBoost] = useState(false);
+  const [liveProcesses, setLiveProcesses] = useState<any[]>([]);
+  const [selectedPids, setSelectedPids] = useState<number[]>([]);
 
 
   const [selectedGameProfile, setSelectedGameProfile] = useState<Game | null>(null);
@@ -60,6 +62,39 @@ function App() {
   const [primeGames, setPrimeGames] = useState<{id: string, name: string, primeDescription: string}[]>([]);
 
 
+
+  useEffect(() => {
+    if (currentTab === 'Boost Tab') {
+      const fetchProcesses = async () => {
+        if (window.eel) {
+          try {
+            const procs = await window.eel.get_live_processes()();
+            setLiveProcesses(procs);
+            // Auto-select top processes if none selected yet, or just select all by default
+            if (selectedPids.length === 0 && procs.length > 0) {
+              setSelectedPids(procs.slice(0, 10).map((p: any) => p.pid)); // Default select top 10 memory hogs
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          // Mock data
+          setTimeout(() => {
+            const mockProcs = [
+              { pid: 1234, name: 'chrome.exe', memory_mb: 1540.5 },
+              { pid: 5678, name: 'discord.exe', memory_mb: 320.1 },
+              { pid: 9101, name: 'spotify.exe', memory_mb: 150.8 }
+            ];
+            setLiveProcesses(mockProcs);
+            if (selectedPids.length === 0) {
+              setSelectedPids(mockProcs.map(p => p.pid));
+            }
+          }, 500);
+        }
+      };
+      fetchProcesses();
+    }
+  }, [currentTab]);
 
   // Fetch supported games dynamically from the Python backend
   useEffect(() => {
@@ -293,7 +328,7 @@ function App() {
 
     if (window.eel) {
       try {
-        const result = await window.eel.boost_game()();
+        const result = await window.eel.boost_game(selectedPids)();
         if (result.status === 'success') {
           addLog(result.message);
           if (result.details) {
@@ -816,54 +851,43 @@ function App() {
             <div className="flex items-center space-x-2">
               <span className="text-gray-600">○</span>
               <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Processes</h2>
-              <span className="text-xs text-gray-500 lowercase ml-2">0 out of 19 items will be optimized during boost</span>
+              <span className="text-xs text-gray-500 lowercase ml-2">{selectedPids.length} out of {liveProcesses.length} items will be optimized during boost</span>
             </div>
             <div className="text-xs text-gray-500 flex items-center space-x-2 cursor-pointer hover:text-white transition-colors">
               <span>Memory Usage</span>
               <span>▼</span>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 opacity-70" data-purpose="process-grid">
-            {/* Process 1 */}
-            <div className="p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-default">
-              <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center">
-                <span className="text-[10px]">G</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-300 truncate">Google Chrome</p>
-                <p className="text-xs text-gray-500">4 GB</p>
-              </div>
-            </div>
-            {/* Process 2 */}
-            <div className="p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-default">
-              <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center">
-                <span className="text-[10px]">Q</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-300 truncate">QQ</p>
-                <p className="text-xs text-gray-500">196 MB</p>
-              </div>
-            </div>
-            {/* Process 3 */}
-            <div className="p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-default">
-              <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center">
-                <span className="text-[10px]">T</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-300 truncate">Microsoft Teams</p>
-                <p className="text-xs text-gray-500">18 MB</p>
-              </div>
-            </div>
-            {/* Process 4 */}
-            <div className="p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-default">
-              <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center">
-                <span className="text-[10px]">S</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-300 truncate">Host Process Services</p>
-                <p className="text-xs text-gray-500">17 MB</p>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-purpose="process-grid">
+            {liveProcesses.map((proc, idx) => {
+              const isSelected = selectedPids.includes(proc.pid);
+              return (
+                <div
+                  key={proc.pid}
+                  className={`p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-pointer transition-colors ${isSelected ? 'opacity-100 ring-1 ring-razer-green/50 bg-razer-green/5' : 'opacity-50 hover:opacity-100'}`}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedPids(prev => prev.filter(id => id !== proc.pid));
+                    } else {
+                      setSelectedPids(prev => [...prev, proc.pid]);
+                    }
+                  }}
+                >
+                  <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-razer-green text-black' : 'bg-gray-700 text-white'}`}>
+                    <span className="text-[10px] font-bold">{proc.name.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-300 truncate">{proc.name}</p>
+                    <p className="text-xs text-gray-500">{proc.memory_mb >= 1024 ? (proc.memory_mb / 1024).toFixed(1) + ' GB' : Math.round(proc.memory_mb) + ' MB'}</p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-razer-green border-razer-green' : 'border-gray-500 bg-transparent'}`}>
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-black"></div>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
         {/* END: ProcessesSection */}

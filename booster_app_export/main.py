@@ -1,4 +1,5 @@
 import sys
+import re
 
 try:
     import pystray
@@ -498,17 +499,16 @@ def purge_ram():
         return {"status": "error", "message": f"Failed to purge RAM: {str(e)}"}
 
 @eel.expose
-def boost_game():
+def boost_game(pids_to_kill=None):
     """
-    Loops through running processes and safely kills non-essential 
-    background applications to free up RAM and CPU.
+    Loops through running processes and safely kills selected
+    background applications (or hardcoded ones if None provided) to free up RAM and CPU.
     """
-    # Target processes (common resource hogs)
     targets = ['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe']
     freed_memory = 0
     closed_apps = []
 
-    # Whitelist the current process and all its children (e.g., the browser spawned by eel)
+    # Whitelist the current process and all its children
     whitelist_pids = set()
     try:
         current_process = psutil.Process()
@@ -518,23 +518,28 @@ def boost_game():
     except Exception:
         pass
 
-    # ⚡ Bolt Optimization: Only request the cheap 'name' attribute during process_iter
-    # Fetching 'memory_info' for *every* running process involves expensive OS calls.
-    # We instead only call proc.memory_info() on the matched target processes.
-    for proc in psutil.process_iter(['name']):
+    for proc in psutil.process_iter(['pid', 'name']):
         try:
-            if proc.pid in whitelist_pids:
+            pid = proc.info.get('pid')
+            name = proc.info.get('name')
+
+            if pid in whitelist_pids:
                 continue
 
-            name = proc.info.get('name')
-            if name and name.lower() in targets:
-                # Get memory usage in MB only for target processes
+            should_kill = False
+            if pids_to_kill is not None:
+                if pid in pids_to_kill:
+                    should_kill = True
+            else:
+                if name and name.lower() in targets:
+                    should_kill = True
+
+            if should_kill:
                 mem = proc.memory_info().rss / (1024 * 1024)
                 freed_memory += mem
-                closed_apps.append(name)
-                proc.kill() # Safely terminate the process
+                closed_apps.append(name if name else str(pid))
+                proc.kill()
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            # Ignore processes we can't access or that already died
             pass
 
     unique_closed = list(set(closed_apps))
@@ -929,7 +934,7 @@ def get_prime_games():
 @eel.expose
 def scan_games():
     """
-    Scans for installed games via Steam registry and .acf files.
+    Scans for installed games via Steam, Epic Games, and GOG registry entries and files.
     Extracts icons and returns a list of game objects.
     """
     games = []
@@ -968,88 +973,184 @@ def scan_games():
             }
         ]
 
+    # Ensure icon directory exists in the web folder
+    icons_dir = os.path.join("web", "icons")
+    os.makedirs(icons_dir, exist_ok=True)
+
+    # --- 1. Steam Scan ---
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
         steam_path, _ = winreg.QueryValueEx(key, "SteamPath")
         steam_path = os.path.normpath(steam_path)
         winreg.CloseKey(key)
+
+        steamapps_path = os.path.join(steam_path, "steamapps")
+        if os.path.exists(steamapps_path):
+            for filename in os.listdir(steamapps_path):
+                if filename.endswith(".acf"):
+                    acf_path = os.path.join(steamapps_path, filename)
+                    try:
+                        with open(acf_path, "r", encoding="utf-8") as f:
+                            content = f.read()
+
+                            name_match = re.search(r'"name"\s+"([^"]+)"', content)
+                            dir_match = re.search(r'"installdir"\s+"([^"]+)"', content)
+                            appid_match = re.search(r'"appid"\s+"([^"]+)"', content)
+
+                            if name_match and dir_match and appid_match:
+                                title = name_match.group(1)
+                                install_dir = dir_match.group(1)
+                                appid = appid_match.group(1)
+
+                                game_dir = os.path.join(steamapps_path, "common", install_dir)
+                                if not os.path.exists(game_dir):
+                                    continue
+
+                                main_exe = None
+                                max_size = -1
+                                for root, _, files in os.walk(game_dir):
+                                    for file in files:
+                                        if file.lower().endswith(".exe"):
+                                            exe_path = os.path.join(root, file)
+                                            try:
+                                                size = os.path.getsize(exe_path)
+                                                if size > max_size:
+                                                    max_size = size
+                                                    main_exe = exe_path
+                                            except Exception:
+                                                pass
+
+                                if main_exe:
+                                    exe_name = os.path.basename(main_exe)
+                                    icon_filename = f"steam_{appid}.ico"
+                                    icon_path_full = os.path.join(icons_dir, icon_filename)
+
+                                    if IconExtractor and not os.path.exists(icon_path_full):
+                                        try:
+                                            extractor = IconExtractor(main_exe)
+                                            extractor.export_icon(icon_path_full)
+                                        except Exception:
+                                            pass
+
+                                    games.append({
+                                        "id": f"steam_{appid}",
+                                        "title": title,
+                                        "exe_path": main_exe,
+                                        "exe_name": exe_name,
+                                        "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
+                                        "profile": {
+                                            "high_priority": True,
+                                            "network_flush": True,
+                                            "power_plan": True,
+                                            "suspend_services": True,
+                                            "ram_purge": True
+                                        }
+                                    })
+                    except Exception:
+                        pass
+    except OSError:
+        pass
+
+    # --- 2. Epic Games Scan ---
+    try:
+        # Epic games info is usually stored in ProgramData\Epic\EpicGamesLauncher\Data\Manifests
+        program_data = os.environ.get('PROGRAMDATA', 'C:\\ProgramData')
+        epic_manifests_dir = os.path.join(program_data, 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests')
+
+        if os.path.exists(epic_manifests_dir):
+            import json
+            for filename in os.listdir(epic_manifests_dir):
+                if filename.endswith(".item"):
+                    try:
+                        with open(os.path.join(epic_manifests_dir, filename), 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            title = data.get('DisplayName', '')
+                            install_loc = data.get('InstallLocation', '')
+                            exe = data.get('LaunchExecutable', '')
+                            appid = data.get('AppName', '')
+
+                            if title and install_loc and exe:
+                                main_exe = os.path.join(install_loc, exe)
+                                if os.path.exists(main_exe):
+                                    exe_name = os.path.basename(main_exe)
+                                    icon_filename = f"epic_{appid}.ico"
+                                    icon_path_full = os.path.join(icons_dir, icon_filename)
+
+                                    if IconExtractor and not os.path.exists(icon_path_full):
+                                        try:
+                                            extractor = IconExtractor(main_exe)
+                                            extractor.export_icon(icon_path_full)
+                                        except Exception:
+                                            pass
+
+                                    games.append({
+                                        "id": f"epic_{appid}",
+                                        "title": title,
+                                        "exe_path": main_exe,
+                                        "exe_name": exe_name,
+                                        "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
+                                        "profile": {
+                                            "high_priority": True,
+                                            "network_flush": True,
+                                            "power_plan": True,
+                                            "suspend_services": True,
+                                            "ram_purge": True
+                                        }
+                                    })
+                    except Exception:
+                        pass
     except Exception:
-        return games
+        pass
 
-    steamapps_path = os.path.join(steam_path, "steamapps")
-    if not os.path.exists(steamapps_path):
-        return games
+    # --- 3. GOG Scan ---
+    try:
+        base_key = r"SOFTWARE\WOW6432Node\GOG.com\Games"
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, base_key)
 
-    # Ensure icon directory exists in the web folder
-    icons_dir = os.path.join("web", "icons")
-    os.makedirs(icons_dir, exist_ok=True)
-
-    # Parse .acf files
-    for filename in os.listdir(steamapps_path):
-        if filename.endswith(".acf"):
-            acf_path = os.path.join(steamapps_path, filename)
+        num_subkeys = winreg.QueryInfoKey(key)[0]
+        for i in range(num_subkeys):
             try:
-                with open(acf_path, "r", encoding="utf-8") as f:
-                    content = f.read()
+                subkey_name = winreg.EnumKey(key, i)
+                subkey = winreg.OpenKey(key, subkey_name)
 
-                    name_match = re.search(r'"name"\s+"([^"]+)"', content)
-                    dir_match = re.search(r'"installdir"\s+"([^"]+)"', content)
-                    appid_match = re.search(r'"appid"\s+"([^"]+)"', content)
+                title, _ = winreg.QueryValueEx(subkey, "GAMENAME")
+                exe_path, _ = winreg.QueryValueEx(subkey, "EXE")
+                install_dir, _ = winreg.QueryValueEx(subkey, "PATH")
+                winreg.CloseKey(subkey)
 
-                    if name_match and dir_match and appid_match:
-                        title = name_match.group(1)
-                        install_dir = dir_match.group(1)
-                        appid = appid_match.group(1)
+                if title and exe_path and os.path.exists(exe_path):
+                    exe_name = os.path.basename(exe_path)
+                    appid = subkey_name
+                    icon_filename = f"gog_{appid}.ico"
+                    icon_path_full = os.path.join(icons_dir, icon_filename)
 
-                        game_dir = os.path.join(steamapps_path, "common", install_dir)
-                        if not os.path.exists(game_dir):
-                            continue
+                    if IconExtractor and not os.path.exists(icon_path_full):
+                        try:
+                            extractor = IconExtractor(exe_path)
+                            extractor.export_icon(icon_path_full)
+                        except Exception:
+                            pass
 
-                        # Find the main executable
-                        # We'll look for the largest .exe file as a heuristic
-                        main_exe = None
-                        max_size = -1
-                        for root, _, files in os.walk(game_dir):
-                            for file in files:
-                                if file.lower().endswith(".exe"):
-                                    exe_path = os.path.join(root, file)
-                                    try:
-                                        size = os.path.getsize(exe_path)
-                                        if size > max_size:
-                                            max_size = size
-                                            main_exe = exe_path
-                                    except Exception:
-                                        pass
-
-                        if main_exe:
-                            exe_name = os.path.basename(main_exe)
-                            icon_filename = f"{appid}.ico"
-                            icon_path_full = os.path.join(icons_dir, icon_filename)
-
-                            # Extract icon if it doesn't exist and icoextract is available
-                            if IconExtractor and not os.path.exists(icon_path_full):
-                                try:
-                                    extractor = IconExtractor(main_exe)
-                                    extractor.export_icon(icon_path_full)
-                                except Exception:
-                                    pass
-
-                            games.append({
-                                "id": appid,
-                                "title": title,
-                                "exe_path": main_exe,
-                                "exe_name": exe_name,
-                                "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
-                                "profile": {
-                                    "high_priority": True,
-                                    "network_flush": True,
-                                    "power_plan": True,
-                                    "suspend_services": True,
-                                    "ram_purge": True
-                                }
-                            })
-            except Exception:
+                    games.append({
+                        "id": f"gog_{appid}",
+                        "title": title,
+                        "exe_path": exe_path,
+                        "exe_name": exe_name,
+                        "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
+                        "profile": {
+                            "high_priority": True,
+                            "network_flush": True,
+                            "power_plan": True,
+                            "suspend_services": True,
+                            "ram_purge": True
+                        }
+                    })
+            except OSError:
                 pass
+
+        winreg.CloseKey(key)
+    except OSError:
+        pass
 
     return games
 
@@ -1101,3 +1202,64 @@ def launch_game(game_id, profile, exe_path, exe_name):
         return {"status": "success", "message": "Game launched successfully.", "details": " | ".join(details)}
     except Exception as e:
         return {"status": "error", "message": f"Failed to launch game: {str(e)}"}
+
+@eel.expose
+def get_live_processes():
+    """
+    Fetches a list of currently running background user processes.
+    Filters out critical Windows system processes and the app's own process tree.
+    Returns JSON array with pid, name, memory_mb.
+    """
+    processes = []
+
+    # Whitelist the current process and all its children (e.g., the browser spawned by eel)
+    whitelist_pids = set()
+    try:
+        current_process = psutil.Process()
+        whitelist_pids.add(current_process.pid)
+        for child in current_process.children(recursive=True):
+            whitelist_pids.add(child.pid)
+    except Exception:
+        pass
+
+    # Critical Windows System Processes
+    critical_processes = [
+        'svchost.exe', 'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
+        'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
+        'spoolsv.exe', 'taskmgr.exe', 'system', 'registry', 'fontdrvhost.exe',
+        'conhost.exe', 'sihost.exe', 'ctfmon.exe', 'taskhostw.exe', 'alg.exe'
+    ]
+
+    for proc in psutil.process_iter(['pid', 'name']):
+        try:
+            pid = proc.info.get('pid')
+            name = proc.info.get('name')
+
+            if not pid or not name:
+                continue
+
+            if pid in whitelist_pids:
+                continue
+
+            if name.lower() in critical_processes:
+                continue
+
+            # Filter empty names or typical system names
+            if not name.strip():
+                continue
+
+            # Fetch memory usage
+            mem_mb = proc.memory_info().rss / (1024 * 1024)
+
+            processes.append({
+                "pid": pid,
+                "name": name,
+                "memory_mb": round(mem_mb, 2)
+            })
+
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+
+    # Sort by memory usage descending
+    processes.sort(key=lambda x: x["memory_mb"], reverse=True)
+    return processes
