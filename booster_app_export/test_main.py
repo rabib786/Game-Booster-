@@ -1,10 +1,21 @@
-import main
 import sys
 from unittest.mock import MagicMock
 
 # Mock eel before importing main to prevent it from messing up with decorators
 mock_eel = MagicMock()
+def mock_expose(func):
+    return func
+mock_eel.expose = mock_expose
 sys.modules['eel'] = mock_eel
+
+mock_psutil = MagicMock()
+sys.modules['psutil'] = mock_psutil
+sys.modules['tkinter'] = MagicMock()
+
+import main
+
+import sys
+
 
 # Define a mock decorator that returns the function itself
 def mock_expose(func):
