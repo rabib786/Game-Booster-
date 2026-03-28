@@ -169,6 +169,7 @@ def toggle_overlay():
 
 
 # --- Telemetry ---
+@eel.expose
 def get_telemetry():
     telemetry = {
         "cpu_usage": 0,
@@ -828,35 +829,67 @@ def maximize_window():
 
 
 # --- Global Hotkeys ---
-def init_hotkeys():
-    if keyboard is None:
-        return
+current_boost_hotkey = 'alt+b'
+current_overlay_hotkey = 'alt+o'
+boost_hook = None
+overlay_hook = None
 
-    def trigger_boost():
-        try:
-            res = boost_game()
-            try:
-                eel.add_log(f"Hotkey Boost: {res['message']}")()
-            except Exception:
-                pass
-        except Exception:
-            pass
-
-    def trigger_overlay():
-        try:
-            res = toggle_overlay()
-            try:
-                eel.add_log(f"Hotkey Overlay: {res['message']}")()
-            except Exception:
-                pass
-        except Exception:
-            pass
-
+def trigger_boost():
     try:
-        keyboard.add_hotkey('alt+b', trigger_boost)
-        keyboard.add_hotkey('alt+o', trigger_overlay)
+        res = boost_game()
+        try:
+            eel.add_log(f"Hotkey Boost: {res['message']}")()
+        except Exception:
+            pass
     except Exception:
         pass
+
+def trigger_overlay():
+    try:
+        res = toggle_overlay()
+        try:
+            eel.add_log(f"Hotkey Overlay: {res['message']}")()
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+def init_hotkeys():
+    global boost_hook, overlay_hook
+    if keyboard is None:
+        return
+    try:
+        boost_hook = keyboard.add_hotkey(current_boost_hotkey, trigger_boost)
+        overlay_hook = keyboard.add_hotkey(current_overlay_hotkey, trigger_overlay)
+    except Exception:
+        pass
+
+@eel.expose
+def update_hotkeys(new_boost, new_overlay):
+    global current_boost_hotkey, current_overlay_hotkey, boost_hook, overlay_hook
+    if keyboard is None:
+        return {"status": "error", "message": "Keyboard module not available."}
+
+    try:
+        if boost_hook:
+            try:
+                keyboard.remove_hotkey(boost_hook)
+            except Exception:
+                pass
+        if overlay_hook:
+            try:
+                keyboard.remove_hotkey(overlay_hook)
+            except Exception:
+                pass
+
+        current_boost_hotkey = new_boost
+        current_overlay_hotkey = new_overlay
+
+        boost_hook = keyboard.add_hotkey(current_boost_hotkey, trigger_boost)
+        overlay_hook = keyboard.add_hotkey(current_overlay_hotkey, trigger_overlay)
+        return {"status": "success", "message": "Hotkeys updated successfully."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 if keyboard:
     threading.Thread(target=init_hotkeys, daemon=True).start()
