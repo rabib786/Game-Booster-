@@ -30,6 +30,90 @@ interface Game {
   profile: GameProfile;
 }
 
+// ⚡ Bolt: Extracted TelemetryDashboard to prevent whole-app re-renders
+// By moving the 1000ms polling interval here, only this component will re-render
+// instead of forcing the entire application (including heavy process/game lists)
+// to reconcile on every tick.
+const TelemetryDashboard = () => {
+  const [telemetry, setTelemetry] = useState({ cpu_usage: 0, ram_usage_gb: 0, gpu_usage: 0, gpu_temp: 0 });
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (window.eel) {
+      interval = setInterval(async () => {
+        try {
+          const tel = await window.eel.get_telemetry()();
+          setTelemetry(tel);
+        } catch (e) {
+          console.error(e);
+        }
+      }, 1000);
+    } else {
+      interval = setInterval(() => {
+        setTelemetry({
+          cpu_usage: Math.floor(Math.random() * 40) + 10,
+          ram_usage_gb: parseFloat((Math.random() * 8 + 4).toFixed(1)),
+          gpu_usage: Math.floor(Math.random() * 30) + 5,
+          gpu_temp: Math.floor(Math.random() * 20) + 40
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <section className="mb-10 bg-panel-bg p-6 rounded-sm border border-gray-800 shadow-lg" data-purpose="telemetry-dashboard">
+      <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-6 flex items-center">
+        <span className="text-razer-green mr-2 animate-pulse">●</span> Live Telemetry
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* CPU */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs font-bold text-gray-400">
+            <span>CPU USAGE</span>
+            <span className="text-white">{telemetry.cpu_usage}%</span>
+          </div>
+          <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${telemetry.cpu_usage > 85 ? 'bg-red-500' : 'bg-razer-green'}`}
+              style={{ width: `${telemetry.cpu_usage}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* RAM */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs font-bold text-gray-400">
+            <span>RAM USAGE</span>
+            <span className="text-white">{telemetry.ram_usage_gb} GB</span>
+          </div>
+          <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${telemetry.ram_usage_gb > 14 ? 'bg-red-500' : 'bg-razer-green'}`}
+              style={{ width: `${Math.min((telemetry.ram_usage_gb / 16) * 100, 100)}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* GPU */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs font-bold text-gray-400">
+            <span>GPU (USAGE / TEMP)</span>
+            <span className="text-white">{telemetry.gpu_usage}% / {telemetry.gpu_temp}°C</span>
+          </div>
+          <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${telemetry.gpu_usage > 90 || telemetry.gpu_temp > 80 ? 'bg-red-500' : 'bg-razer-green'}`}
+              style={{ width: `${telemetry.gpu_usage}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+
 function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
@@ -37,7 +121,6 @@ function App() {
   const [boostHotkey, setBoostHotkey] = useState('alt+b');
   const [overlayHotkey, setOverlayHotkey] = useState('alt+o');
   const [isUpdatingHotkeys, setIsUpdatingHotkeys] = useState(false);
-  const [telemetry, setTelemetry] = useState({ cpu_usage: 0, ram_usage_gb: 0, gpu_usage: 0, gpu_temp: 0 });
   const [isCleaning, setIsCleaning] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -121,31 +204,6 @@ function App() {
       fetchPrimeGames();
     }
   }, [currentTab]);
-
-  // Poll telemetry
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (window.eel) {
-      interval = setInterval(async () => {
-        try {
-          const tel = await window.eel.get_telemetry()();
-          setTelemetry(tel);
-        } catch (e) {
-          console.error(e);
-        }
-      }, 1000);
-    } else {
-      interval = setInterval(() => {
-        setTelemetry({
-          cpu_usage: Math.floor(Math.random() * 40) + 10,
-          ram_usage_gb: parseFloat((Math.random() * 8 + 4).toFixed(1)),
-          gpu_usage: Math.floor(Math.random() * 30) + 5,
-          gpu_temp: Math.floor(Math.random() * 20) + 40
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -654,54 +712,7 @@ function App() {
           <>
 
         {/* BEGIN: Telemetry Dashboard */}
-        <section className="mb-10 bg-panel-bg p-6 rounded-sm border border-gray-800 shadow-lg" data-purpose="telemetry-dashboard">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-6 flex items-center">
-            <span className="text-razer-green mr-2 animate-pulse">●</span> Live Telemetry
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* CPU */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold text-gray-400">
-                <span>CPU USAGE</span>
-                <span className="text-white">{telemetry.cpu_usage}%</span>
-              </div>
-              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-500 ${telemetry.cpu_usage > 85 ? 'bg-red-500' : 'bg-razer-green'}`}
-                  style={{ width: `${telemetry.cpu_usage}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* RAM */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold text-gray-400">
-                <span>RAM USAGE</span>
-                <span className="text-white">{telemetry.ram_usage_gb} GB</span>
-              </div>
-              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-500 ${telemetry.ram_usage_gb > 14 ? 'bg-red-500' : 'bg-razer-green'}`}
-                  style={{ width: `${Math.min((telemetry.ram_usage_gb / 16) * 100, 100)}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* GPU */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold text-gray-400">
-                <span>GPU (USAGE / TEMP)</span>
-                <span className="text-white">{telemetry.gpu_usage}% / {telemetry.gpu_temp}°C</span>
-              </div>
-              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-500 ${telemetry.gpu_usage > 90 || telemetry.gpu_temp > 80 ? 'bg-red-500' : 'bg-razer-green'}`}
-                  style={{ width: `${telemetry.gpu_usage}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <TelemetryDashboard />
         {/* END: Telemetry Dashboard */}
 
 
