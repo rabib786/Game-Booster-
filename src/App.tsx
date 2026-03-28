@@ -31,7 +31,7 @@ interface Game {
 function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
-  const [currentTab, setCurrentTab] = useState<'Game Booster' | 'System Booster' | 'Booster Prime'>('Game Booster');
+  const [currentTab, setCurrentTab] = useState<'Boost Tab' | 'System Booster' | 'Booster Prime'>('Boost Tab');
   const [isCleaning, setIsCleaning] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -422,7 +422,7 @@ function App() {
           <button className="hover:text-white">&lt;</button>
           <button className="hover:text-white">&gt;</button>
         </div>
-        <a className={`transition-colors cursor-pointer ${currentTab === "Game Booster" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Game Booster")}>Boost</a>
+        <a className={`transition-colors cursor-pointer ${currentTab === "Boost Tab" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Boost Tab")}>Boost</a>
         <a className={`transition-colors cursor-pointer ${currentTab === "Booster Prime" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Booster Prime")}>Booster Prime</a>
       </nav>
       {/* END: SubNavigation */}
@@ -430,7 +430,7 @@ function App() {
       {/* BEGIN: MainContent */}
 <main className="flex-1 overflow-y-auto p-8 custom-scrollbar" data-purpose="dashboard-content">
 
-        {currentTab === 'Game Booster' && (
+        {currentTab === 'Boost Tab' && (
           <>
 
         {/* Session Analytics Card */}
@@ -565,7 +565,7 @@ function App() {
           {/* Monitor Card */}
           <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
             <div>
-              <h3 className="text-white font-bold mb-2">Process Monitor</h3>
+              <h3 className="text-white font-bold mb-2">Start Monitor</h3>
               <p className="text-xs text-gray-400 mb-4">Assigns high priority to your game and lowers background apps.</p>
               <input
                 type="text"
@@ -586,7 +586,7 @@ function App() {
           {/* Services Card */}
           <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
             <div>
-              <h3 className="text-white font-bold mb-2">Service Suspension</h3>
+              <h3 className="text-white font-bold mb-2">Suspend Services</h3>
               <p className="text-xs text-gray-400 mb-4">Temporarily disables non-essential Windows services like Print Spooler while you game.</p>
             </div>
             <button
@@ -615,7 +615,7 @@ function App() {
           {/* RAM Purge Card */}
           <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
             <div>
-              <h3 className="text-white font-bold mb-2">RAM Purge</h3>
+              <h3 className="text-white font-bold mb-2">Purge RAM</h3>
               <p className="text-xs text-gray-400 mb-4">Force clears standby memory using EmptyWorkingSet API to free up physical RAM for gaming.</p>
             </div>
             <button
@@ -782,7 +782,7 @@ function App() {
 
 {/* Output Console Box (moved from old design) */}
         <section className="mt-10 mb-8 border-t border-gray-800 pt-6">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Logs</h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Log</h2>
           <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
             <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1">
               {logs.map((log, i) => (
