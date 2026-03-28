@@ -9,6 +9,12 @@ import subprocess
 import atexit
 import signal
 
+
+try:
+    from icoextract import IconExtractor
+except ImportError:
+    IconExtractor = None
+
 try:
     import winreg
 except ImportError:
@@ -474,3 +480,173 @@ if __name__ == '__main__':
     # Start the app. port=0 automatically selects an available port.
     eel.start('index.html', size=(1000, 650), port=0)
 
+
+
+
+@eel.expose
+def scan_games():
+    """
+    Scans for installed games via Steam registry and .acf files.
+    Extracts icons and returns a list of game objects.
+    """
+    games = []
+
+    # Check if we're on Windows and winreg is available
+    if winreg is None:
+        # Provide a mock response for non-Windows/testing environments
+        return [
+            {
+                "id": "mock_csgo",
+                "title": "Counter-Strike 2 (Mock)",
+                "exe_path": "mock/csgo.exe",
+                "exe_name": "csgo.exe",
+                "icon_path": None,
+                "profile": {
+                    "high_priority": True,
+                    "network_flush": True,
+                    "power_plan": True,
+                    "suspend_services": True
+                }
+            },
+            {
+                "id": "mock_stardew",
+                "title": "Stardew Valley (Mock)",
+                "exe_path": "mock/StardewValley.exe",
+                "exe_name": "StardewValley.exe",
+                "icon_path": None,
+                "profile": {
+                    "high_priority": False,
+                    "network_flush": False,
+                    "power_plan": False,
+                    "suspend_services": False
+                }
+            }
+        ]
+
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
+        steam_path, _ = winreg.QueryValueEx(key, "SteamPath")
+        steam_path = os.path.normpath(steam_path)
+        winreg.CloseKey(key)
+    except Exception:
+        return games
+
+    steamapps_path = os.path.join(steam_path, "steamapps")
+    if not os.path.exists(steamapps_path):
+        return games
+
+    # Ensure icon directory exists in the web folder
+    icons_dir = os.path.join("web", "icons")
+    os.makedirs(icons_dir, exist_ok=True)
+
+    # Parse .acf files
+    for filename in os.listdir(steamapps_path):
+        if filename.endswith(".acf"):
+            acf_path = os.path.join(steamapps_path, filename)
+            try:
+                with open(acf_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                    name_match = re.search(r'"name"\s+"([^"]+)"', content)
+                    dir_match = re.search(r'"installdir"\s+"([^"]+)"', content)
+                    appid_match = re.search(r'"appid"\s+"([^"]+)"', content)
+
+                    if name_match and dir_match and appid_match:
+                        title = name_match.group(1)
+                        install_dir = dir_match.group(1)
+                        appid = appid_match.group(1)
+
+                        game_dir = os.path.join(steamapps_path, "common", install_dir)
+                        if not os.path.exists(game_dir):
+                            continue
+
+                        # Find the main executable
+                        # We'll look for the largest .exe file as a heuristic
+                        main_exe = None
+                        max_size = -1
+                        for root, _, files in os.walk(game_dir):
+                            for file in files:
+                                if file.lower().endswith(".exe"):
+                                    exe_path = os.path.join(root, file)
+                                    try:
+                                        size = os.path.getsize(exe_path)
+                                        if size > max_size:
+                                            max_size = size
+                                            main_exe = exe_path
+                                    except Exception:
+                                        pass
+
+                        if main_exe:
+                            exe_name = os.path.basename(main_exe)
+                            icon_filename = f"{appid}.ico"
+                            icon_path_full = os.path.join(icons_dir, icon_filename)
+
+                            # Extract icon if it doesn't exist and icoextract is available
+                            if IconExtractor and not os.path.exists(icon_path_full):
+                                try:
+                                    extractor = IconExtractor(main_exe)
+                                    extractor.export_icon(icon_path_full)
+                                except Exception:
+                                    pass
+
+                            games.append({
+                                "id": appid,
+                                "title": title,
+                                "exe_path": main_exe,
+                                "exe_name": exe_name,
+                                "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
+                                "profile": {
+                                    "high_priority": True,
+                                    "network_flush": True,
+                                    "power_plan": True,
+                                    "suspend_services": True
+                                }
+                            })
+            except Exception:
+                pass
+
+    return games
+
+
+@eel.expose
+def launch_game(game_id, profile, exe_path, exe_name):
+    """
+    Combined execution flow for One-Click "Launch & Boost".
+    profile should be a dict like:
+    {
+      "high_priority": True,
+      "network_flush": True,
+      "power_plan": True,
+      "suspend_services": True
+    }
+    """
+    try:
+        details = []
+
+        if profile.get('power_plan'):
+            set_power_plan('high_performance')
+            details.append("Power plan set to High Performance.")
+
+        if profile.get('network_flush'):
+            flush_dns_and_reset()
+            details.append("Network stack flushed.")
+
+        if profile.get('suspend_services'):
+            suspend_services()
+            details.append("Services suspended.")
+
+        if profile.get('high_priority'):
+            start_monitor(exe_name)
+            details.append(f"Process monitor started for {exe_name}.")
+
+        # Launch the game executable
+        if os.path.exists(exe_path):
+            subprocess.Popen([exe_path], cwd=os.path.dirname(exe_path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+            details.append(f"Launched {exe_name}.")
+        else:
+            # Fallback for mock/testing
+            details.append(f"Simulated launch for {exe_name} (path not found).")
+
+        return {"status": "success", "message": "Game launched successfully.", "details": " | ".join(details)}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to launch game: {str(e)}"}
