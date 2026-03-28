@@ -10,6 +10,22 @@ import atexit
 import signal
 
 
+
+try:
+    import keyboard
+except ImportError:
+    keyboard = None
+
+try:
+    import pynvml
+    pynvml.nvmlInit()
+    nvml_initialized = True
+except Exception:
+    pynvml = None
+    nvml_initialized = False
+
+import tkinter as tk
+
 try:
     from icoextract import IconExtractor
 except ImportError:
@@ -30,6 +46,128 @@ monitor_thread = None
 monitoring_active = False
 target_game_exe = ""
 suspended_services_list = []
+
+
+
+# --- Performance Overlay ---
+overlay_active = False
+overlay_window = None
+
+def overlay_thread_func():
+    global overlay_window, overlay_active
+
+    overlay_window = tk.Tk()
+    overlay_window.overrideredirect(True)
+    overlay_window.attributes('-alpha', 0.8)
+    overlay_window.attributes('-topmost', True)
+    overlay_window.configure(bg='black')
+
+    # Make it click-through on Windows
+    try:
+        import ctypes
+        from ctypes import wintypes
+        GWL_EXSTYLE = -20
+        WS_EX_LAYERED = 0x00080000
+        WS_EX_TRANSPARENT = 0x00000020
+
+        hwnd = ctypes.windll.user32.GetParent(overlay_window.winfo_id())
+        style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        style = style | WS_EX_LAYERED | WS_EX_TRANSPARENT
+        ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
+    except Exception:
+        pass # Not on Windows or failed
+
+    # Position in top-right corner
+    ws = overlay_window.winfo_screenwidth()
+    hs = overlay_window.winfo_screenheight()
+    overlay_window.geometry(f"200x120+{ws-220}+20")
+
+    # Labels
+    cpu_var = tk.StringVar(value="CPU: 0% | 0C")
+    gpu_var = tk.StringVar(value="GPU: 0% | 0C")
+    ram_var = tk.StringVar(value="RAM: 0.0 GB")
+    fps_var = tk.StringVar(value="FPS: N/A")
+
+    tk.Label(overlay_window, textvariable=fps_var, fg="#44d62c", bg="black", font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=2)
+    tk.Label(overlay_window, textvariable=cpu_var, fg="white", bg="black", font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
+    tk.Label(overlay_window, textvariable=gpu_var, fg="white", bg="black", font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
+    tk.Label(overlay_window, textvariable=ram_var, fg="white", bg="black", font=("Arial", 10)).pack(anchor="w", padx=10, pady=2)
+
+    def update_overlay():
+        if not overlay_active:
+            overlay_window.destroy()
+            return
+
+        tel = get_telemetry()
+
+        # CPU Temp is tricky, psutil might not have it on Windows without admin, default to N/A
+        cpu_temp_str = "N/A"
+        try:
+            temps = psutil.sensors_temperatures()
+            if temps and 'coretemp' in temps:
+                cpu_temp_str = f"{int(temps['coretemp'][0].current)}C"
+        except Exception:
+            pass
+
+        cpu_var.set(f"CPU: {tel.get('cpu_usage', 0)}% | {cpu_temp_str}")
+        gpu_var.set(f"GPU: {tel.get('gpu_usage', 0)}% | {tel.get('gpu_temp', 0)}C")
+        ram_var.set(f"RAM: {tel.get('ram_usage_gb', 0):.1f} GB")
+
+        overlay_window.after(1000, update_overlay)
+
+    update_overlay()
+    overlay_window.mainloop()
+    overlay_window = None
+
+@eel.expose
+def toggle_overlay():
+    global overlay_active
+    overlay_active = not overlay_active
+
+    if overlay_active:
+        t = threading.Thread(target=overlay_thread_func, daemon=True)
+        t.start()
+        return {"status": "success", "message": "Performance Overlay enabled."}
+    else:
+        # window loop will catch overlay_active == False and destroy itself
+        return {"status": "success", "message": "Performance Overlay disabled."}
+
+
+# --- Telemetry ---
+def get_telemetry():
+    telemetry = {
+        "cpu_usage": 0,
+        "ram_usage_gb": 0,
+        "gpu_usage": 0,
+        "gpu_temp": 0
+    }
+
+    # CPU Usage
+    try:
+        telemetry["cpu_usage"] = psutil.cpu_percent(interval=None)
+    except Exception:
+        pass
+
+    # RAM Usage
+    try:
+        mem = psutil.virtual_memory()
+        telemetry["ram_usage_gb"] = mem.used / (1024 ** 3)
+    except Exception:
+        pass
+
+    # GPU Stats
+    if pynvml and nvml_initialized:
+        try:
+            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            rates = pynvml.nvmlDeviceGetUtilizationRates(handle)
+            temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
+            telemetry["gpu_usage"] = rates.gpu
+            telemetry["gpu_temp"] = temp
+        except Exception:
+            pass
+
+    return telemetry
+
 
 # --- Emergency Restore Hooks & State Persistence ---
 def exit_handler():
@@ -475,6 +613,42 @@ def maximize_window():
         ctypes.windll.user32.ShowWindow(hwnd, 3) # SW_MAXIMIZE
     except Exception:
         pass
+
+
+# --- Global Hotkeys ---
+def init_hotkeys():
+    if keyboard is None:
+        return
+
+    def trigger_boost():
+        try:
+            res = boost_game()
+            try:
+                eel.add_log(f"Hotkey Boost: {res['message']}")()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def trigger_overlay():
+        try:
+            res = toggle_overlay()
+            try:
+                eel.add_log(f"Hotkey Overlay: {res['message']}")()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    try:
+        keyboard.add_hotkey('alt+b', trigger_boost)
+        keyboard.add_hotkey('alt+o', trigger_overlay)
+    except Exception:
+        pass
+
+if keyboard:
+    threading.Thread(target=init_hotkeys, daemon=True).start()
+
 
 if __name__ == '__main__':
     # Start the app. port=0 automatically selects an available port.
