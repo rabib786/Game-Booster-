@@ -26,6 +26,8 @@ export default function App() {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
   const [isServicesSuspended, setIsServicesSuspended] = useState(false);
+  const [isPowerPlanHigh, setIsPowerPlanHigh] = useState(false);
+  const [isFlushingNetwork, setIsFlushingNetwork] = useState(false);
 
 
   useEffect(() => {
@@ -212,6 +214,57 @@ export default function App() {
 
 
 
+
+  const handleTogglePowerPlan = async () => {
+    const nextPlan = isPowerPlanHigh ? 'balanced' : 'high_performance';
+    setIsPowerPlanHigh(!isPowerPlanHigh);
+    addLog(`Initiating Power Plan switch to ${nextPlan}...`);
+
+    if (window.eel) {
+      try {
+        const result = await window.eel.set_power_plan(nextPlan)();
+        if (result.status === 'success') {
+          addLog(result.message);
+        } else {
+          addLog(`Error: ${result.message}`, true);
+          setIsPowerPlanHigh(isPowerPlanHigh);
+        }
+      } catch (error) {
+        addLog(`Failed to switch power plan: ${error}`, true);
+        setIsPowerPlanHigh(isPowerPlanHigh);
+      }
+    } else {
+      setTimeout(() => {
+        addLog(`[Web Preview] Successfully switched to ${nextPlan === 'high_performance' ? 'High Performance' : 'Balanced'} power plan.`);
+      }, 1000);
+    }
+  };
+
+  const handleNetworkFlush = async () => {
+    setIsFlushingNetwork(true);
+    addLog('Initiating Network Flush sequence...');
+
+    if (window.eel) {
+      try {
+        const result = await window.eel.flush_dns_and_reset()();
+        if (result.status === 'success') {
+          addLog(result.message);
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (error) {
+        addLog(`Failed to flush network: ${error}`, true);
+      }
+    } else {
+      setTimeout(() => {
+        addLog('[Web Preview] Network flushed and reset successfully.');
+        setIsFlushingNetwork(false);
+      }, 1500);
+      return;
+    }
+    setIsFlushingNetwork(false);
+  };
+
   return (
     <div className="bg-dark-bg text-gray-300 font-sans h-screen overflow-hidden flex flex-col select-none">
 
@@ -265,7 +318,36 @@ export default function App() {
         {/* END: OptimizationSummary */}
 
         {/* BEGIN: Enhanced Tools Section */}
-        <section className="mb-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section className="mb-10 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+
+          {/* Power Plan Card */}
+          <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+            <div>
+              <h3 className="text-white font-bold mb-2">Power Plan Switcher</h3>
+              <p className="text-xs text-gray-400 mb-4">Forces Windows "High Performance" to ensure CPU clocks stay high and avoid core parking.</p>
+            </div>
+            <button
+              onClick={handleTogglePowerPlan}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors ${isPowerPlanHigh ? 'bg-orange-900/50 text-orange-400 hover:bg-orange-900 border border-orange-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
+            >
+              {isPowerPlanHigh ? 'Restore Balanced' : 'Enable High Perf'}
+            </button>
+          </div>
+
+          {/* Network Flush Card */}
+          <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+            <div>
+              <h3 className="text-white font-bold mb-2">Network Flush</h3>
+              <p className="text-xs text-gray-400 mb-4">Cleans the network stack (release/renew IP, flush DNS) to reduce latency and jitter.</p>
+            </div>
+            <button
+              onClick={handleNetworkFlush}
+              disabled={isFlushingNetwork}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 ${isFlushingNetwork ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {isFlushingNetwork ? 'Flushing...' : 'Flush Network'}
+            </button>
+          </div>
 
           {/* Monitor Card */}
           <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
