@@ -720,6 +720,9 @@ def optimize_startup():
 
 
 
+
+
+
 @eel.expose
 def set_power_plan(plan_type):
     """

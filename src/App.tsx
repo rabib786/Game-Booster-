@@ -363,6 +363,9 @@ function App() {
 
 
 
+
+
+
   const handleTogglePowerPlan = async () => {
     const nextPlan = isPowerPlanHigh ? 'balanced' : 'high_performance';
     setIsPowerPlanHigh(!isPowerPlanHigh);
@@ -533,6 +536,7 @@ function App() {
         {/* BEGIN: Enhanced Tools Section */}
         <section className="mb-10 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
 
+
           {/* Power Plan Card */}
           <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
             <div>
@@ -543,7 +547,7 @@ function App() {
               onClick={handleTogglePowerPlan}
               className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors ${isPowerPlanHigh ? 'bg-orange-900/50 text-orange-400 hover:bg-orange-900 border border-orange-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
             >
-              {isPowerPlanHigh ? 'Restore Balanced' : 'Enable High Perf'}
+              {isPowerPlanHigh ? 'Restore Balanced' : 'Enable High Perf.'}
             </button>
           </div>
 
