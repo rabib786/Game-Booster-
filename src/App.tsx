@@ -12,19 +12,35 @@ declare global {
   }
 }
 
+// ⚡ Bolt Optimization: Memoize the log viewer to prevent O(N) re-renders
+// when unrelated App state (like autoBoost toggle) changes.
+const LogViewer = React.memo(({ logs }: { logs: string[] }) => {
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  return (
+    <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
+      <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1">
+        {logs.map((log, i) => (
+          <p key={i} className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
+        ))}
+        <div ref={logsEndRef} />
+      </div>
+    </div>
+  );
+});
+
 export default function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
   const [currentTab, setCurrentTab] = useState<'Game Booster' | 'System Booster'>('Game Booster');
   const [isCleaning, setIsCleaning] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const logsEndRef = useRef<HTMLDivElement>(null);
 
   const [autoBoost, setAutoBoost] = useState(false);
-
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
 
   // Expose a function to Python to add logs asynchronously
   useEffect(() => {
@@ -286,14 +302,7 @@ export default function App() {
 {/* Output Console Box (moved from old design) */}
         <section className="mt-10 mb-8 border-t border-gray-800 pt-6">
           <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Logs</h2>
-          <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
-            <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1">
-              {logs.map((log, i) => (
-                <p key={i} className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
-              ))}
-              <div ref={logsEndRef} />
-            </div>
-          </div>
+          <LogViewer logs={logs} />
         </section>
       </main>
       {/* END: MainContent */}
