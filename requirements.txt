@@ -4,3 +4,5 @@ pytest
 pytest-mock
 pyinstaller
 icoextract
+nvidia-ml-py
+keyboard
