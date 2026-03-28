@@ -57,7 +57,33 @@ function App() {
   const [isPowerPlanHigh, setIsPowerPlanHigh] = useState(false);
   const [isFlushingNetwork, setIsFlushingNetwork] = useState(false);
 
+  const [primeGames, setPrimeGames] = useState<{id: string, name: string, primeDescription: string}[]>([]);
 
+
+
+  useEffect(() => {
+    if (currentTab === 'Booster Prime') {
+      const fetchPrimeGames = async () => {
+        if (window.eel) {
+          try {
+            const games = await window.eel.get_prime_games()();
+            setPrimeGames(games);
+          } catch (error) {
+            console.error(`Error fetching Prime games: ${error}`);
+          }
+        } else {
+          // Mock
+          setTimeout(() => {
+            setPrimeGames([
+              { id: 'mock_cp', name: 'Cyberpunk 2077', primeDescription: 'Enables DLSS and disables V-Sync for maximum framerates.' },
+              { id: 'mock_wz', name: 'Warzone', primeDescription: 'Enables DLSS and disables V-Sync for competitive advantage.' }
+            ]);
+          }, 500);
+        }
+      };
+      fetchPrimeGames();
+    }
+  }, [currentTab]);
 
   // Poll telemetry
   useEffect(() => {
@@ -859,33 +885,29 @@ function App() {
             </section>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
-                <div>
-                  <h3 className="text-white font-bold mb-2">Cyberpunk 2077</h3>
-                  <p className="text-xs text-gray-400 mb-4">Enables DLSS and disables V-Sync for maximum framerates.</p>
-                </div>
-                <button
-                  onClick={() => handleTweakGame('Cyberpunk 2077')}
-                  disabled={isTweaking}
-                  className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isTweaking ? 'Optimizing...' : 'Optimize Cyberpunk'}
-                </button>
-              </div>
-
-              <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
-                <div>
-                  <h3 className="text-white font-bold mb-2">Warzone</h3>
-                  <p className="text-xs text-gray-400 mb-4">Enables DLSS and disables V-Sync for competitive advantage.</p>
-                </div>
-                <button
-                  onClick={() => handleTweakGame('Warzone')}
-                  disabled={isTweaking}
-                  className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isTweaking ? 'Optimizing...' : 'Optimize Warzone'}
-                </button>
-              </div>
+              {primeGames.length > 0 ? (
+                  primeGames.map((game) => (
+                      <div key={game.id} className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-white font-bold mb-2">{game.name}</h3>
+                          <p className="text-xs text-gray-400 mb-4">{game.primeDescription}</p>
+                        </div>
+                        <button
+                          onClick={() => handleTweakGame(game.name)}
+                          disabled={isTweaking}
+                          className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {isTweaking ? 'Optimizing...' : `Optimize ${game.name}`}
+                        </button>
+                      </div>
+                  ))
+              ) : (
+                  <div className="col-span-full text-center p-8 bg-panel-bg rounded border border-gray-800">
+                    <span className="text-3xl opacity-50 block mb-2">🎮</span>
+                    <p className="text-gray-400">No supported Booster Prime games found on this system.</p>
+                    <p className="text-sm text-gray-600 mt-2">Install a supported game to see optimization options here.</p>
+                  </div>
+              )}
             </div>
 
             {/* Injected System Booster Tools */}
