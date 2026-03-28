@@ -3,13 +3,15 @@ import { describe, it, expect, vi } from 'vitest';
 import App from './App';
 
 describe('App', () => {
-  it('renders title', () => {
+  it('renders Library tab by default', () => {
     render(<App />);
-    expect(screen.getByText(/28 items will be optimized/i)).toBeInTheDocument();
+    expect(screen.getByText(/My Library/i)).toBeInTheDocument();
   });
+
 
   it('handles boost click', async () => {
     render(<App />);
+    fireEvent.click(screen.getByText('Boost'));
     const boostBtn = screen.getByText('Boost Now');
     fireEvent.click(boostBtn);
 
@@ -18,6 +20,7 @@ describe('App', () => {
 
   it('handles autoboost toggle', () => {
     render(<App />);
+    fireEvent.click(screen.getByText('Boost'));
     const autoboost = screen.getByText('Auto-Boost');
     fireEvent.click(autoboost);
 
@@ -26,6 +29,7 @@ describe('App', () => {
 
   it('handles power plan toggle', async () => {
     render(<App />);
+    fireEvent.click(screen.getByText('Boost'));
     const powerBtn = screen.getByText('Enable High Perf.');
     fireEvent.click(powerBtn);
 
@@ -34,6 +38,7 @@ describe('App', () => {
 
   it('handles network flush click', async () => {
     render(<App />);
+    fireEvent.click(screen.getByText('Boost'));
     const flushBtn = screen.getByText('Flush Network');
     fireEvent.click(flushBtn);
 

@@ -162,10 +162,11 @@ def test_flush_dns_and_reset_success(mock_run):
 
     assert result['status'] == 'success'
 
-def test_scan_games(mocker):
+@patch("main.scan_games")
+def test_scan_games(mock_scan):
 
     # For testing, we just mock the return of scan_games since mocking the entire OS/winreg flow is complex across platforms
-    mocker.patch('main.scan_games', return_value=[{
+    mock_scan.return_value = [{
         "id": "730",
         "title": "Counter-Strike 2",
         "exe_path": "/mock/path/cs2.exe",
@@ -175,9 +176,10 @@ def test_scan_games(mocker):
             "high_priority": True,
             "network_flush": True,
             "power_plan": True,
-            "suspend_services": True
+            "suspend_services": True,
+            "ram_purge": True
         }
-    }])
+    }]
 
 
     result = main.scan_games()
@@ -186,20 +188,23 @@ def test_scan_games(mocker):
     assert result[0]['title'] == 'Counter-Strike 2'
     assert result[0]['exe_name'] == 'cs2.exe'
 
-def test_launch_game(mocker):
+@patch('os.path.exists')
+@patch('subprocess.Popen')
+@patch('main.purge_ram')
+@patch('main.start_monitor')
+@patch('main.suspend_services')
+@patch('main.flush_dns_and_reset')
+@patch('main.set_power_plan')
+def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists):
     # Mock the system modification functions
-    mock_power = mocker.patch('main.set_power_plan')
-    mock_flush = mocker.patch('main.flush_dns_and_reset')
-    mock_suspend = mocker.patch('main.suspend_services')
-    mock_monitor = mocker.patch('main.start_monitor')
-    mock_subprocess = mocker.patch('subprocess.Popen')
-    mocker.patch('os.path.exists', return_value=True)
+    mock_exists.return_value = True
 
     profile = {
         "high_priority": True,
         "network_flush": True,
         "power_plan": True,
-        "suspend_services": True
+            "suspend_services": True,
+            "ram_purge": True
     }
 
     result = main.launch_game("730", profile, "/mock/cs2.exe", "cs2.exe")
@@ -209,22 +214,26 @@ def test_launch_game(mocker):
     mock_flush.assert_called_once()
     mock_suspend.assert_called_once()
     mock_monitor.assert_called_once_with('cs2.exe')
+    mock_purge.assert_called_once()
     mock_subprocess.assert_called_once()
 
-def test_launch_game_no_profile(mocker):
+@patch('os.path.exists')
+@patch('subprocess.Popen')
+@patch('main.purge_ram')
+@patch('main.start_monitor')
+@patch('main.suspend_services')
+@patch('main.flush_dns_and_reset')
+@patch('main.set_power_plan')
+def test_launch_game_no_profile(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists):
     # Mock the system modification functions
-    mock_power = mocker.patch('main.set_power_plan')
-    mock_flush = mocker.patch('main.flush_dns_and_reset')
-    mock_suspend = mocker.patch('main.suspend_services')
-    mock_monitor = mocker.patch('main.start_monitor')
-    mock_subprocess = mocker.patch('subprocess.Popen')
-    mocker.patch('os.path.exists', return_value=True)
+    mock_exists.return_value = True
 
     profile = {
         "high_priority": False,
         "network_flush": False,
         "power_plan": False,
-        "suspend_services": False
+        "suspend_services": False,
+        "ram_purge": False
     }
 
     result = main.launch_game("730", profile, "/mock/cs2.exe", "cs2.exe")
@@ -234,4 +243,5 @@ def test_launch_game_no_profile(mocker):
     mock_flush.assert_not_called()
     mock_suspend.assert_not_called()
     mock_monitor.assert_not_called()
+    mock_purge.assert_not_called()
     mock_subprocess.assert_called_once()
