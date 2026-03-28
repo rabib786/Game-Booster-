@@ -6,3 +6,5 @@ pyinstaller
 icoextract
 nvidia-ml-py
 keyboard
+pystray
+Pillow
