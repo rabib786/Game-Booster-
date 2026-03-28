@@ -405,6 +405,50 @@ def optimize_startup():
         }
 
 
+
+@eel.expose
+def set_power_plan(plan_type):
+    """
+    Switches the Windows power plan to High Performance or Balanced.
+    """
+    try:
+        if plan_type == 'high_performance':
+            guid = '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'
+        elif plan_type == 'balanced':
+            guid = '381b4222-f694-41f0-9685-ff5bb260df2e'
+        else:
+            return {"status": "error", "message": "Invalid power plan type."}
+
+        result = subprocess.run(['powercfg', '/setactive', guid], capture_output=True, text=True, creationflags=0x08000000)
+
+        if result.returncode == 0:
+            plan_name = "High Performance" if plan_type == 'high_performance' else "Balanced"
+            return {"status": "success", "message": f"Successfully switched to {plan_name} power plan."}
+        else:
+            return {"status": "error", "message": f"Failed to switch power plan: {result.stderr or result.stdout}"}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to switch power plan: {str(e)}"}
+
+@eel.expose
+def flush_dns_and_reset():
+    """
+    Flushes DNS and resets network stack to reduce latency.
+    """
+    try:
+        commands = [
+            ['ipconfig', '/release'],
+            ['ipconfig', '/renew'],
+            ['ipconfig', '/flushdns'],
+            ['netsh', 'int', 'ip', 'reset']
+        ]
+
+        for cmd in commands:
+            subprocess.run(cmd, capture_output=True, text=True, creationflags=0x08000000)
+
+        return {"status": "success", "message": "Network flushed and reset successfully."}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to flush network: {str(e)}"}
+
 @eel.expose
 def close_window():
     sys.exit(0)

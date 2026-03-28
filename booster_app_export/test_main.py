@@ -101,3 +101,51 @@ class TestCleanSystem(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+@patch('subprocess.run')
+def test_set_power_plan_success(mock_run):
+    from main import set_power_plan
+
+    # Mock successful powercfg execution
+    mock_run.return_value.returncode = 0
+
+    # Test High Performance
+    result = set_power_plan('high_performance')
+    mock_run.assert_called_with(
+        ['powercfg', '/setactive', '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'],
+        capture_output=True,
+        text=True,
+        creationflags=0x08000000
+    )
+    assert result['status'] == 'success'
+
+    # Test Balanced
+    result = set_power_plan('balanced')
+    mock_run.assert_called_with(
+        ['powercfg', '/setactive', '381b4222-f694-41f0-9685-ff5bb260df2e'],
+        capture_output=True,
+        text=True,
+        creationflags=0x08000000
+    )
+    assert result['status'] == 'success'
+
+@patch('subprocess.run')
+def test_flush_dns_and_reset_success(mock_run):
+    from main import flush_dns_and_reset
+
+    # Mock successful network flush execution
+    mock_run.return_value.returncode = 0
+
+    result = flush_dns_and_reset()
+
+    # Ensure subprocess.run was called for the 4 expected commands
+    assert mock_run.call_count == 4
+
+    calls = mock_run.call_args_list
+    assert calls[0][0][0] == ['ipconfig', '/release']
+    assert calls[1][0][0] == ['ipconfig', '/renew']
+    assert calls[2][0][0] == ['ipconfig', '/flushdns']
+    assert calls[3][0][0] == ['netsh', 'int', 'ip', 'reset']
+
+    assert result['status'] == 'success'
