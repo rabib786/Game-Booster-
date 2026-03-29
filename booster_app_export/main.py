@@ -915,8 +915,8 @@ SUPPORTED_PRIME_GAMES = {
 }
 
 @eel.expose
-def get_prime_games():
-    installed = scan_games()
+def get_prime_games(force_refresh=False):
+    installed = scan_games(force_refresh)
     prime_games = []
 
     for game in installed:
@@ -931,18 +931,27 @@ def get_prime_games():
 
     return prime_games
 
+_cached_games = None
+_last_scan_time = 0
+
 @eel.expose
-def scan_games():
+def scan_games(force_refresh=False):
     """
     Scans for installed games via Steam, Epic Games, and GOG registry entries and files.
     Extracts icons and returns a list of game objects.
     """
+    global _cached_games, _last_scan_time
+
+    # Return cached games if available and not forced to refresh (cache valid for 5 mins)
+    if not force_refresh and _cached_games is not None and (time.time() - _last_scan_time < 300):
+        return _cached_games
+
     games = []
 
     # Check if we're on Windows and winreg is available
     if winreg is None:
         # Provide a mock response for non-Windows/testing environments
-        return [
+        _cached_games = [
             {
                 "id": "mock_csgo",
                 "title": "Counter-Strike 2 (Mock)",
@@ -972,6 +981,8 @@ def scan_games():
                 }
             }
         ]
+        _last_scan_time = time.time()
+        return _cached_games
 
     # Ensure icon directory exists in the web folder
     icons_dir = os.path.join("web", "icons")
@@ -1151,6 +1162,9 @@ def scan_games():
         winreg.CloseKey(key)
     except OSError:
         pass
+
+    _cached_games = games
+    _last_scan_time = time.time()
 
     return games
 

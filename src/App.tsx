@@ -251,11 +251,11 @@ function App() {
   };
 
 
-  const handleScanGames = async () => {
+  const handleScanGames = async (forceRefresh = false) => {
     addLog('Scanning for installed games...');
     if (window.eel) {
       try {
-        const games = await window.eel.scan_games()();
+        const games = await window.eel.scan_games(forceRefresh)();
         setInstalledGames(games);
         addLog(`Found ${games.length} games.`);
       } catch (error) {
@@ -652,7 +652,7 @@ function App() {
                 <span className="text-razer-green mr-3">📚</span> My Library
               </h2>
               <button
-                onClick={handleScanGames}
+                onClick={() => handleScanGames(true)}
                 className="bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)]"
               >
                 Scan Games
