@@ -1069,7 +1069,7 @@ function App() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-black">
               <h2 className="text-white font-bold text-lg">{selectedGameProfile.title} Profile</h2>
-              <button
+              <button aria-label="Close Profile"
                 onClick={() => setSelectedGameProfile(null)}
                 className="text-gray-400 hover:text-white transition-colors p-1"
               >
@@ -1128,7 +1128,7 @@ function App() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-black relative z-10">
               <h2 className="text-white font-bold text-lg flex items-center"><span className="text-razer-green mr-2">📊</span> Session Summary</h2>
-              <button
+              <button aria-label="Close Summary"
                 onClick={() => setSessionSummary(null)}
                 className="text-gray-400 hover:text-white transition-colors p-1"
               >
