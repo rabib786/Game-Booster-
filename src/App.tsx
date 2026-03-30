@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Settings, Play, X } from 'lucide-react';
 
 // Declare eel for TypeScript
@@ -626,6 +626,43 @@ function App() {
     setIsFlushingNetwork(false);
   };
 
+  // ⚡ Bolt Optimization: Prevent O(N²) list rendering bottleneck
+  // Wraps the massive process list mapping in useMemo so it doesn't re-render
+  // on unrelated state changes (like telemetry ticks or keystrokes).
+  // Also converts the O(N) array .includes() lookup into an O(1) Set.has() lookup.
+  const memoizedProcesses = useMemo(() => {
+    const selectedSet = new Set(selectedPids);
+    return liveProcesses.map((proc, idx) => {
+      const isSelected = selectedSet.has(proc.pid);
+      return (
+        <div
+          key={proc.pid}
+          className={`p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-pointer transition-colors ${isSelected ? 'opacity-100 ring-1 ring-razer-green/50 bg-razer-green/5' : 'opacity-50 hover:opacity-100'}`}
+          onClick={() => {
+            if (isSelected) {
+              setSelectedPids(prev => prev.filter(id => id !== proc.pid));
+            } else {
+              setSelectedPids(prev => [...prev, proc.pid]);
+            }
+          }}
+        >
+          <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-razer-green text-black' : 'bg-gray-700 text-white'}`}>
+            <span className="text-[10px] font-bold">{proc.name.charAt(0).toUpperCase()}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-300 truncate">{proc.name}</p>
+            <p className="text-xs text-gray-500">{proc.memory_mb >= 1024 ? (proc.memory_mb / 1024).toFixed(1) + ' GB' : Math.round(proc.memory_mb) + ' MB'}</p>
+          </div>
+          <div className="flex-shrink-0">
+            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-razer-green border-razer-green' : 'border-gray-500 bg-transparent'}`}>
+              {isSelected && <div className="w-2 h-2 rounded-full bg-black"></div>}
+            </div>
+          </div>
+        </div>
+      );
+    });
+  }, [liveProcesses, selectedPids]);
+
   return (
     <div className="bg-dark-bg text-gray-300 font-sans h-screen overflow-hidden flex flex-col select-none">
 
@@ -870,35 +907,7 @@ function App() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-purpose="process-grid">
-            {liveProcesses.map((proc, idx) => {
-              const isSelected = selectedPids.includes(proc.pid);
-              return (
-                <div
-                  key={proc.pid}
-                  className={`p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-pointer transition-colors ${isSelected ? 'opacity-100 ring-1 ring-razer-green/50 bg-razer-green/5' : 'opacity-50 hover:opacity-100'}`}
-                  onClick={() => {
-                    if (isSelected) {
-                      setSelectedPids(prev => prev.filter(id => id !== proc.pid));
-                    } else {
-                      setSelectedPids(prev => [...prev, proc.pid]);
-                    }
-                  }}
-                >
-                  <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-razer-green text-black' : 'bg-gray-700 text-white'}`}>
-                    <span className="text-[10px] font-bold">{proc.name.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-300 truncate">{proc.name}</p>
-                    <p className="text-xs text-gray-500">{proc.memory_mb >= 1024 ? (proc.memory_mb / 1024).toFixed(1) + ' GB' : Math.round(proc.memory_mb) + ' MB'}</p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-razer-green border-razer-green' : 'border-gray-500 bg-transparent'}`}>
-                      {isSelected && <div className="w-2 h-2 rounded-full bg-black"></div>}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {memoizedProcesses}
           </div>
         </section>
         {/* END: ProcessesSection */}

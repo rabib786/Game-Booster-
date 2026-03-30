@@ -8,3 +8,7 @@
 ## 2026-03-28 - Prevent React Root Re-renders with Component Extraction
 **Learning:** In a React app, placing high-frequency polling logic (like a 1000ms `setInterval` for telemetry) in the root `App` component causes the entire component tree to unnecessarily reconcile every second, even if most child components don't depend on that data.
 **Action:** Extract the high-frequency state, its `useEffect` polling hook, and the corresponding UI rendering logic into a distinct, isolated component (e.g., `TelemetryDashboard`). Render this component where needed, ensuring only it re-renders on every tick, saving massive CPU cycles on reconciliation.
+
+## 2025-02-28 - Prevent O(N²) List Rendering Bottlenecks
+**Learning:** Rendering a massive list (`liveProcesses.map`) that does an `O(N)` array `.includes()` check on every item results in `O(N²)` complexity, causing severe frontend lag when unrelated state changes (e.g., typing in an input field) trigger parent re-renders.
+**Action:** Wrap the heavy list mapping logic in a `useMemo` block that only updates when its dependencies change, and convert the lookup array into a `Set` for `O(1)` lookups (e.g., `Set.has()`).
