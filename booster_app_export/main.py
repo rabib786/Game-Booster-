@@ -266,7 +266,12 @@ def monitor_game_process():
         all_cores = None
         bg_cores = None
 
+    # ⚡ Bolt Optimization: Pre-calculate sets and lowercased target string to prevent O(N) re-evaluations
+    all_cores_set = set(all_cores) if all_cores else None
+    bg_cores_set = set(bg_cores) if bg_cores else None
+
     while monitoring_active:
+        target_game_exe_lower = target_game_exe.lower()
         found_game = False
         game_proc = None
 
@@ -274,7 +279,7 @@ def monitor_game_process():
         for proc in psutil.process_iter(['name']):
             try:
                 name = proc.info.get('name')
-                if name and name.lower() == target_game_exe.lower():
+                if name and name.lower() == target_game_exe_lower:
                     found_game = True
                     game_proc = proc
                     break
@@ -310,10 +315,10 @@ def monitor_game_process():
                 pass
 
             # Set game affinity to all cores
-            if all_cores:
+            if all_cores_set:
                 try:
                     current_affinity = game_proc.cpu_affinity()
-                    if set(current_affinity) != set(all_cores):
+                    if set(current_affinity) != all_cores_set:
                         game_proc.cpu_affinity(all_cores)
                         try:
                             eel.add_log(f"Set {target_game_exe} core affinity to all cores")()
@@ -323,11 +328,12 @@ def monitor_game_process():
                     pass
 
             # Whitelist critical system processes and our own process tree
-            critical_processes = [
+            # ⚡ Bolt Optimization: Use O(1) set to prevent O(N*M) lookups inside the process iteration loop
+            critical_processes_set = set([
                 'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
                 'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
                 'spoolsv.exe', 'svchost.exe', 'taskmgr.exe'
-            ]
+            ])
             whitelist_pids = set()
             try:
                 current_process = psutil.Process()
@@ -338,22 +344,23 @@ def monitor_game_process():
                 pass
 
             # Set background apps to low priority and restrict core affinity
-            bg_targets = ['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe']
+            # ⚡ Bolt Optimization: Use O(1) set lookup
+            bg_targets_set = set(['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe'])
             for proc in psutil.process_iter(['name']):
                 try:
                     name = proc.info.get('name')
                     if proc.pid in whitelist_pids:
                         continue
-                    if name and name.lower() in critical_processes:
+                    if name and name.lower() in critical_processes_set:
                         continue
-                    if name and name.lower() in bg_targets:
+                    if name and name.lower() in bg_targets_set:
                         if proc.nice() != LOW_PRIO:
                             proc.nice(LOW_PRIO)
 
-                        if bg_cores:
+                        if bg_cores_set:
                             try:
                                 current_affinity = proc.cpu_affinity()
-                                if set(current_affinity) != set(bg_cores):
+                                if set(current_affinity) != bg_cores_set:
                                     proc.cpu_affinity(bg_cores)
                             except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
                                 pass
@@ -504,7 +511,11 @@ def boost_game(pids_to_kill=None):
     Loops through running processes and safely kills selected
     background applications (or hardcoded ones if None provided) to free up RAM and CPU.
     """
-    targets = ['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe']
+    # ⚡ Bolt Optimization: Convert list structures to O(1) sets before entering the loop
+    targets_set = set(['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
+    if pids_to_kill is not None:
+        pids_to_kill = set(pids_to_kill)
+
     freed_memory = 0
     closed_apps = []
 
@@ -531,7 +542,7 @@ def boost_game(pids_to_kill=None):
                 if pid in pids_to_kill:
                     should_kill = True
             else:
-                if name and name.lower() in targets:
+                if name and name.lower() in targets_set:
                     should_kill = True
 
             if should_kill:
@@ -1237,12 +1248,13 @@ def get_live_processes():
         pass
 
     # Critical Windows System Processes
-    critical_processes = [
+    # ⚡ Bolt Optimization: Use O(1) set for faster lookups inside the loop
+    critical_processes_set = set([
         'svchost.exe', 'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
         'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
         'spoolsv.exe', 'taskmgr.exe', 'system', 'registry', 'fontdrvhost.exe',
         'conhost.exe', 'sihost.exe', 'ctfmon.exe', 'taskhostw.exe', 'alg.exe'
-    ]
+    ])
 
     for proc in psutil.process_iter(['pid', 'name']):
         try:
@@ -1255,7 +1267,7 @@ def get_live_processes():
             if pid in whitelist_pids:
                 continue
 
-            if name.lower() in critical_processes:
+            if name.lower() in critical_processes_set:
                 continue
 
             # Filter empty names or typical system names

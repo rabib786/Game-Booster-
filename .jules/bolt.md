@@ -12,3 +12,7 @@
 ## 2025-02-28 - Prevent O(N²) List Rendering Bottlenecks
 **Learning:** Rendering a massive list (`liveProcesses.map`) that does an `O(N)` array `.includes()` check on every item results in `O(N²)` complexity, causing severe frontend lag when unrelated state changes (e.g., typing in an input field) trigger parent re-renders.
 **Action:** Wrap the heavy list mapping logic in a `useMemo` block that only updates when its dependencies change, and convert the lookup array into a `Set` for `O(1)` lookups (e.g., `Set.has()`).
+
+## 2025-03-31 - O(N*M) Bottlenecks in Backend Process Filtering
+**Learning:** Checking `if item in list` inside a loop over hundreds of system processes (like `psutil.process_iter`) creates an O(N*M) algorithmic bottleneck. For example, filtering 300 processes against a list of 150 process IDs or target names results in tens of thousands of unnecessary string or integer comparisons.
+**Action:** Always convert lookup lists (like `pids_to_kill` or `critical_processes`) into `set()` structures *before* entering the process iteration loop. This guarantees O(1) lookups and significantly reduces CPU overhead during system monitoring and boosting.
