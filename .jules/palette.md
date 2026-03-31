@@ -1,3 +1,6 @@
 ## YYYY-MM-DD - [Convert navigation `<a>` tags to `<button>`]
 **Learning:** Found an accessibility issue pattern where `<a>` tags without `href` were used for app navigation tabs, breaking keyboard accessibility as they aren't naturally focusable via the `Tab` key.
 **Action:** Replaced these `<a>` tags with `<button>` elements, ensuring they are keyboard-accessible (tab-focusable) and readable by screen readers. Added `aria-label` attributes to icon-only buttons for screen reader friendliness and `focus-visible` styles for better keyboard navigation visual feedback.
+## 2026-03-31 - [Accessible Toggles and Inputs]
+**Learning:** Found an accessibility anti-pattern where custom toggle switches were built using `<div>` elements with `onClick` handlers, making them inaccessible via keyboard and unreadable by screen readers. Also found form inputs without explicit `id` and `htmlFor` associations.
+**Action:** Converted `<div>` toggles into semantic `<button role="switch">` elements, dynamically setting `aria-checked` attributes and applying `focus-visible` utility classes for clear keyboard focus indicators. Ensure all interactive inputs have properly associated labels via `id` and `htmlFor` attributes to improve both screen reader accessibility and the hit area for clicks.

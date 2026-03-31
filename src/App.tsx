@@ -774,13 +774,19 @@ function App() {
             </div>
           </div>
           <div className="flex items-center space-x-8">
-            <div className="flex items-center space-x-3 cursor-pointer" onClick={toggleAutoBoost}>
+            <button
+              className="flex items-center space-x-3 cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded"
+              onClick={toggleAutoBoost}
+              role="switch"
+              aria-checked={autoBoost}
+              aria-label="Auto-Boost"
+            >
               <span className="text-xs font-bold uppercase text-gray-400">Auto-Boost</span>
               {/* Toggle Switch */}
               <div className={`w-10 h-5 rounded-full relative transition-colors ${autoBoost ? 'bg-razer-green' : 'bg-gray-600'}`}>
                 <div className={`absolute top-1 w-3 h-3 bg-black rounded-full transition-all ${autoBoost ? 'right-1' : 'left-1'}`}></div>
               </div>
-            </div>
+            </button>
             <button
               onClick={handleBoost}
               disabled={isBoosting}
@@ -1017,8 +1023,9 @@ function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-bold text-gray-400 mb-2 uppercase tracking-wider">Boost Game Hotkey</label>
+                  <label htmlFor="boostHotkey" className="block text-sm font-bold text-gray-400 mb-2 uppercase tracking-wider">Boost Game Hotkey</label>
                   <input
+                    id="boostHotkey"
                     type="text"
                     value={boostHotkey}
                     onChange={(e) => setBoostHotkey(e.target.value)}
@@ -1029,8 +1036,9 @@ function App() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-400 mb-2 uppercase tracking-wider">Performance Overlay Hotkey</label>
+                  <label htmlFor="overlayHotkey" className="block text-sm font-bold text-gray-400 mb-2 uppercase tracking-wider">Performance Overlay Hotkey</label>
                   <input
+                    id="overlayHotkey"
                     type="text"
                     value={overlayHotkey}
                     onChange={(e) => setOverlayHotkey(e.target.value)}
@@ -1105,7 +1113,10 @@ function App() {
                   </div>
                   <button
                     onClick={() => toggleProfileSetting(setting.key as keyof GameProfile)}
-                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${selectedGameProfile.profile[setting.key as keyof GameProfile] ? 'bg-razer-green' : 'bg-gray-600'}`}
+                    role="switch"
+                    aria-checked={selectedGameProfile.profile[setting.key as keyof GameProfile]}
+                    aria-label={setting.label}
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none ${selectedGameProfile.profile[setting.key as keyof GameProfile] ? 'bg-razer-green' : 'bg-gray-600'}`}
                   >
                     <span
                       className={`inline-block h-3 w-3 transform rounded-full bg-black transition-transform ${selectedGameProfile.profile[setting.key as keyof GameProfile] ? 'translate-x-6' : 'translate-x-1'}`}
