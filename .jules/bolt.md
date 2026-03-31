@@ -16,3 +16,7 @@
 ## 2025-03-31 - O(N*M) Bottlenecks in Backend Process Filtering
 **Learning:** Checking `if item in list` inside a loop over hundreds of system processes (like `psutil.process_iter`) creates an O(N*M) algorithmic bottleneck. For example, filtering 300 processes against a list of 150 process IDs or target names results in tens of thousands of unnecessary string or integer comparisons.
 **Action:** Always convert lookup lists (like `pids_to_kill` or `critical_processes`) into `set()` structures *before* entering the process iteration loop. This guarantees O(1) lookups and significantly reduces CPU overhead during system monitoring and boosting.
+
+## 2025-04-01 - Avoid psutil.process_iter for explicit PID lookups
+**Learning:** Calling `psutil.process_iter` forces a complete iteration of every running process on the OS to fetch process metadata. When optimizing operations like `boost_game` where the target PIDs (`pids_to_kill`) are already explicitly known, iterating through all system processes just to check `if pid in targets` creates massive unnecessary overhead (O(N) vs O(K)).
+**Action:** When a direct list of PIDs is available, bypass `psutil.process_iter()` entirely and directly instantiate process objects via `psutil.Process(pid)`. This drops the time complexity from an O(N) system-wide metadata scan to an O(K) direct OS-level lookup (where K is the number of targeted processes).
