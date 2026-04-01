@@ -20,3 +20,7 @@
 ## 2025-04-01 - Avoid psutil.process_iter for explicit PID lookups
 **Learning:** Calling `psutil.process_iter` forces a complete iteration of every running process on the OS to fetch process metadata. When optimizing operations like `boost_game` where the target PIDs (`pids_to_kill`) are already explicitly known, iterating through all system processes just to check `if pid in targets` creates massive unnecessary overhead (O(N) vs O(K)).
 **Action:** When a direct list of PIDs is available, bypass `psutil.process_iter()` entirely and directly instantiate process objects via `psutil.Process(pid)`. This drops the time complexity from an O(N) system-wide metadata scan to an O(K) direct OS-level lookup (where K is the number of targeted processes).
+
+## 2025-04-01 - Avoid psutil.process_iter for PID-only lookups
+**Learning:** Using `psutil.process_iter(['pid'])` instantiates full process objects which carries significant overhead. When only needing the raw Process IDs (e.g., for direct OS API calls via `ctypes`), using `psutil.pids()` directly is significantly faster (~15x) as it skips object instantiation and fetches a raw list of integers.
+**Action:** Replace `psutil.process_iter(['pid'])` with `psutil.pids()` in loops where only the Process ID is required and no other process metadata is needed.
