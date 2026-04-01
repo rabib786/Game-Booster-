@@ -1190,20 +1190,27 @@ def scan_games(force_refresh=False):
 
 
 @eel.expose
-def launch_game(game_id, profile, exe_path, exe_name):
+def launch_game(game_id, profile, exe_path_unused, exe_name_unused):
     """
     Combined execution flow for One-Click "Launch & Boost".
-    profile should be a dict like:
-    {
-      "high_priority": True,
-      "network_flush": True,
-      "power_plan": True,
-      "suspend_services": True,
-      "ram_purge": True
-    }
+    Now validated against local scan results to prevent arbitrary command execution.
     """
     try:
         details = []
+
+        # Security: Validate game_id against locally scanned games
+        installed_games = scan_games()
+        target_game = next((g for g in installed_games if g['id'] == game_id), None)
+
+        if not target_game:
+            return {"status": "error", "message": f"Unauthorized or invalid game ID: {game_id}"}
+
+        # Use validated paths from the backend scan, NOT from the frontend parameters
+        exe_path = target_game.get('exe_path')
+        exe_name = target_game.get('exe_name')
+
+        if not exe_path or not os.path.exists(exe_path):
+            return {"status": "error", "message": f"Game executable not found at {exe_path}"}
 
         if profile.get('ram_purge'):
             purge_ram()
@@ -1225,13 +1232,9 @@ def launch_game(game_id, profile, exe_path, exe_name):
             start_monitor(exe_name)
             details.append(f"Process monitor started for {exe_name}.")
 
-        # Launch the game executable
-        if os.path.exists(exe_path):
-            subprocess.Popen([exe_path], cwd=os.path.dirname(exe_path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
-            details.append(f"Launched {exe_name}.")
-        else:
-            # Fallback for mock/testing
-            details.append(f"Simulated launch for {exe_name} (path not found).")
+        # Launch the validated game executable
+        subprocess.Popen([exe_path], cwd=os.path.dirname(exe_path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+        details.append(f"Launched {exe_name}.")
 
         return {"status": "success", "message": "Game launched successfully.", "details": " | ".join(details)}
     except Exception as e:

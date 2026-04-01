@@ -188,6 +188,7 @@ def test_scan_games(mock_scan):
     assert result[0]['title'] == 'Counter-Strike 2'
     assert result[0]['exe_name'] == 'cs2.exe'
 
+@patch('main.scan_games')
 @patch('os.path.exists')
 @patch('subprocess.Popen')
 @patch('main.purge_ram')
@@ -195,7 +196,14 @@ def test_scan_games(mock_scan):
 @patch('main.suspend_services')
 @patch('main.flush_dns_and_reset')
 @patch('main.set_power_plan')
-def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists):
+def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists, mock_scan):
+    # Mock scan_games to return a legitimate entry
+    mock_scan.return_value = [{
+        "id": "730",
+        "title": "Counter-Strike 2",
+        "exe_path": "/mock/cs2.exe",
+        "exe_name": "cs2.exe"
+    }]
     # Mock the system modification functions
     mock_exists.return_value = True
 
@@ -217,6 +225,7 @@ def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_pu
     mock_purge.assert_called_once()
     mock_subprocess.assert_called_once()
 
+@patch('main.scan_games')
 @patch('os.path.exists')
 @patch('subprocess.Popen')
 @patch('main.purge_ram')
@@ -224,7 +233,14 @@ def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_pu
 @patch('main.suspend_services')
 @patch('main.flush_dns_and_reset')
 @patch('main.set_power_plan')
-def test_launch_game_no_profile(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists):
+def test_launch_game_no_profile(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists, mock_scan):
+    # Mock scan_games to return a legitimate entry
+    mock_scan.return_value = [{
+        "id": "730",
+        "title": "Counter-Strike 2",
+        "exe_path": "/mock/cs2.exe",
+        "exe_name": "cs2.exe"
+    }]
     # Mock the system modification functions
     mock_exists.return_value = True
 
@@ -245,3 +261,23 @@ def test_launch_game_no_profile(mock_power, mock_flush, mock_suspend, mock_monit
     mock_monitor.assert_not_called()
     mock_purge.assert_not_called()
     mock_subprocess.assert_called_once()
+
+@patch('main.scan_games')
+@patch('subprocess.Popen')
+def test_launch_game_security_unauthorized_id(mock_subprocess, mock_scan):
+    # Mock scan_games to return ONLY legitimate entries
+    mock_scan.return_value = [{
+        "id": "legit_game",
+        "title": "Legit Game",
+        "exe_path": "/path/to/game.exe",
+        "exe_name": "game.exe"
+    }]
+
+    profile = {"high_priority": False}
+
+    # Attempt to launch an unauthorized ID (malicious_id)
+    result = main.launch_game("malicious_id", profile, "/usr/bin/id", "id")
+
+    assert result['status'] == 'error'
+    assert "Unauthorized or invalid game ID" in result['message']
+    mock_subprocess.assert_not_called()
