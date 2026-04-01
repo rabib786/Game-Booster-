@@ -245,3 +245,27 @@ def test_launch_game_no_profile(mock_power, mock_flush, mock_suspend, mock_monit
     mock_monitor.assert_not_called()
     mock_purge.assert_not_called()
     mock_subprocess.assert_called_once()
+
+@patch('main.scan_games')
+def test_get_prime_games(mock_scan):
+    from main import get_prime_games
+
+    # Mock some installed games
+    mock_scan.return_value = [
+        {"id": "1", "title": "Cyberpunk 2077"},
+        {"id": "2", "title": "Warzone"},
+        {"id": "3", "title": "Call of Duty: Warzone"},
+        {"id": "4", "title": "Other Game"}
+    ]
+
+    result = get_prime_games()
+
+    # We expect 3 prime games (Cyberpunk 2077, Warzone, and Call of Duty: Warzone)
+    # based on exact matches in SUPPORTED_PRIME_GAMES.
+    assert len(result) == 3
+
+    titles = [g['name'] for g in result]
+    assert "Cyberpunk 2077" in titles
+    assert "Warzone" in titles
+    assert "Call of Duty: Warzone" in titles
+    assert "Other Game" not in titles

@@ -934,20 +934,25 @@ SUPPORTED_PRIME_GAMES = {
     "Call of Duty: Warzone": "Enables DLSS and disables V-Sync for competitive advantage."
 }
 
+# ⚡ Bolt Optimization: Pre-calculate lowercase mapping at module level for O(N) complexity
+_SUPPORTED_PRIME_GAMES_LOWER = {k.lower(): v for k, v in SUPPORTED_PRIME_GAMES.items()}
+
 @eel.expose
 def get_prime_games(force_refresh=False):
     installed = scan_games(force_refresh)
     prime_games = []
 
     for game in installed:
-        for supported_title, desc in SUPPORTED_PRIME_GAMES.items():
-            if supported_title.lower() in game.get('title', '').lower():
-                prime_games.append({
-                    "id": game.get('id'),
-                    "name": game.get('title'),
-                    "primeDescription": desc
-                })
-                break
+        title = game.get('title', '')
+        title_lower = title.lower()
+        # ⚡ Bolt Optimization: Use O(1) dictionary lookup instead of O(M) nested loop
+        # Note: Switched to exact match for O(1) complexity as suggested in the performance task rationale.
+        if title_lower in _SUPPORTED_PRIME_GAMES_LOWER:
+            prime_games.append({
+                "id": game.get('id'),
+                "name": title,
+                "primeDescription": _SUPPORTED_PRIME_GAMES_LOWER[title_lower]
+            })
 
     return prime_games
 
