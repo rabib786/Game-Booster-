@@ -343,6 +343,7 @@ function App() {
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
       }
+      setIsCleaning(false);
     } else {
       setTimeout(() => {
         addLog('[Web Preview] Cleaned 150.45 MB of Junk.');
@@ -350,7 +351,6 @@ function App() {
       }, 1000);
       return;
     }
-    setIsCleaning(false);
   };
 
   const handleOptimizeStartup = async () => {
