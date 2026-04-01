@@ -529,29 +529,37 @@ def boost_game(pids_to_kill=None):
     except Exception:
         pass
 
-    for proc in psutil.process_iter(['pid', 'name']):
-        try:
-            pid = proc.info.get('pid')
-            name = proc.info.get('name')
-
+    if pids_to_kill is not None:
+        # ⚡ Bolt Optimization: Directly lookup targeted PIDs in O(K) instead of full O(N) system traversal
+        for pid in pids_to_kill:
             if pid in whitelist_pids:
                 continue
-
-            should_kill = False
-            if pids_to_kill is not None:
-                if pid in pids_to_kill:
-                    should_kill = True
-            else:
-                if name and name.lower() in targets_set:
-                    should_kill = True
-
-            if should_kill:
+            try:
+                proc = psutil.Process(pid)
+                name = proc.name()
                 mem = proc.memory_info().rss / (1024 * 1024)
                 freed_memory += mem
                 closed_apps.append(name if name else str(pid))
                 proc.kill()
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            pass
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+    else:
+        # Fallback to full system scan if no explicit targets are given
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                pid = proc.info.get('pid')
+                name = proc.info.get('name')
+
+                if pid in whitelist_pids:
+                    continue
+
+                if name and name.lower() in targets_set:
+                    mem = proc.memory_info().rss / (1024 * 1024)
+                    freed_memory += mem
+                    closed_apps.append(name if name else str(pid))
+                    proc.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
 
     unique_closed = list(set(closed_apps))
     return {
