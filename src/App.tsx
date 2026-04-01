@@ -722,17 +722,17 @@ function App() {
                     </div>
 
                     {/* Hover Overlay with Actions */}
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 flex flex-col items-center justify-center space-y-3">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-20 flex flex-col items-center justify-center space-y-3">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleLaunchGame(game); }}
-                        className="bg-razer-green hover:bg-green-400 text-black font-black py-2 px-8 rounded-full text-sm uppercase tracking-wider transform hover:scale-105 transition-all shadow-[0_0_15px_rgba(68,214,44,0.4)] flex items-center space-x-2"
+                        className="bg-razer-green hover:bg-green-400 text-black font-black py-2 px-8 rounded-full text-sm uppercase tracking-wider transform hover:scale-105 transition-all shadow-[0_0_15px_rgba(68,214,44,0.4)] flex items-center space-x-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                       >
                         <Play size={16} fill="currentColor" />
                         <span>Play & Boost</span>
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); setSelectedGameProfile(game); }}
-                        className="text-gray-300 hover:text-white flex items-center space-x-2 text-xs uppercase tracking-widest font-bold transition-colors"
+                        className="text-gray-300 hover:text-white flex items-center space-x-2 text-xs uppercase tracking-widest font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded px-2 py-1"
                       >
                         <Settings size={14} />
                         <span>Configure Profile</span>
