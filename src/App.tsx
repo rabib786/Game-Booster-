@@ -6,11 +6,39 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Settings, Play, X } from 'lucide-react';
 
-// Declare eel for TypeScript
-declare global {
-  interface Window {
-    eel: any;
-  }
+interface EelResponse {
+  status: 'success' | 'error';
+  message: string;
+  details?: string;
+}
+
+interface TelemetryData {
+  cpu_usage: number;
+  ram_usage_gb: number;
+  gpu_usage: number;
+  gpu_temp: number;
+}
+
+interface SessionSummaryData {
+  avg_fps_gain: number;
+  '1_percent_lows_gain': number;
+  ram_cleared_gb: number;
+}
+
+interface SessionSummaryResponse extends EelResponse {
+  details: SessionSummaryData;
+}
+
+interface PrimeGame {
+  id: string;
+  name: string;
+  primeDescription: string;
+}
+
+interface ProcessInfo {
+  pid: number;
+  name: string;
+  memory_mb: number;
 }
 
 interface GameProfile {
@@ -28,6 +56,36 @@ interface Game {
   exe_name: string;
   icon_path: string | null;
   profile: GameProfile;
+}
+
+interface Eel {
+  expose: (func: Function, name?: string) => void;
+  get_telemetry: () => () => Promise<TelemetryData>;
+  toggle_overlay: () => () => Promise<EelResponse>;
+  start_monitor: (targetExe: string) => () => Promise<EelResponse>;
+  stop_monitor: () => () => Promise<EelResponse>;
+  get_session_summary: () => () => Promise<SessionSummaryResponse>;
+  suspend_services: () => () => Promise<EelResponse>;
+  restore_services: () => () => Promise<EelResponse>;
+  purge_ram: () => () => Promise<EelResponse>;
+  boost_game: (pidsToKill?: number[]) => () => Promise<EelResponse>;
+  clean_system: () => () => Promise<EelResponse>;
+  tweak_game_settings: (gameName: string) => () => Promise<EelResponse>;
+  optimize_startup: () => () => Promise<EelResponse>;
+  set_power_plan: (planType: 'high_performance' | 'balanced') => () => Promise<EelResponse>;
+  flush_dns_and_reset: () => () => Promise<EelResponse>;
+  update_hotkeys: (newBoost: string, newOverlay: string) => () => Promise<EelResponse>;
+  get_prime_games: (forceRefresh?: boolean) => () => Promise<PrimeGame[]>;
+  scan_games: (forceRefresh?: boolean) => () => Promise<Game[]>;
+  launch_game: (gameId: string, profile: GameProfile, exePath: string, exeName: string) => () => Promise<EelResponse>;
+  get_live_processes: () => () => Promise<ProcessInfo[]>;
+}
+
+// Declare eel for TypeScript
+declare global {
+  interface Window {
+    eel: Eel;
+  }
 }
 
 // ⚡ Bolt: Extracted TelemetryDashboard to prevent whole-app re-renders
@@ -126,7 +184,7 @@ function App() {
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const [autoBoost, setAutoBoost] = useState(false);
-  const [liveProcesses, setLiveProcesses] = useState<any[]>([]);
+  const [liveProcesses, setLiveProcesses] = useState<ProcessInfo[]>([]);
   const [selectedPids, setSelectedPids] = useState<number[]>([]);
 
 
@@ -142,7 +200,7 @@ function App() {
   const [isPowerPlanHigh, setIsPowerPlanHigh] = useState(false);
   const [isFlushingNetwork, setIsFlushingNetwork] = useState(false);
 
-  const [primeGames, setPrimeGames] = useState<{id: string, name: string, primeDescription: string}[]>([]);
+  const [primeGames, setPrimeGames] = useState<PrimeGame[]>([]);
 
 
 
@@ -155,7 +213,7 @@ function App() {
             setLiveProcesses(procs);
             // Auto-select top processes if none selected yet, or just select all by default
             if (selectedPids.length === 0 && procs.length > 0) {
-              setSelectedPids(procs.slice(0, 10).map((p: any) => p.pid)); // Default select top 10 memory hogs
+              setSelectedPids(procs.slice(0, 10).map((p) => p.pid)); // Default select top 10 memory hogs
             }
           } catch (e) {
             console.error(e);
