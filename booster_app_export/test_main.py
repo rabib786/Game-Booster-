@@ -188,6 +188,7 @@ def test_scan_games(mock_scan):
     assert result[0]['title'] == 'Counter-Strike 2'
     assert result[0]['exe_name'] == 'cs2.exe'
 
+@patch('main.scan_games')
 @patch('os.path.exists')
 @patch('subprocess.Popen')
 @patch('main.purge_ram')
@@ -195,9 +196,17 @@ def test_scan_games(mock_scan):
 @patch('main.suspend_services')
 @patch('main.flush_dns_and_reset')
 @patch('main.set_power_plan')
-def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists):
+def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists, mock_scan):
     # Mock the system modification functions
     mock_exists.return_value = True
+    mock_scan.return_value = [{
+        "id": "730",
+        "title": "Counter-Strike 2",
+        "exe_path": "/mock/cs2.exe",
+        "exe_name": "cs2.exe",
+        "icon_path": None,
+        "profile": {}
+    }]
 
     profile = {
         "high_priority": True,
@@ -207,7 +216,7 @@ def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_pu
             "ram_purge": True
     }
 
-    result = main.launch_game("730", profile, "/mock/cs2.exe", "cs2.exe")
+    result = main.launch_game("730", profile, "/mock/untrusted.exe", "untrusted.exe")
 
     assert result['status'] == 'success'
     mock_power.assert_called_once_with('high_performance')
@@ -217,6 +226,7 @@ def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_pu
     mock_purge.assert_called_once()
     mock_subprocess.assert_called_once()
 
+@patch('main.scan_games')
 @patch('os.path.exists')
 @patch('subprocess.Popen')
 @patch('main.purge_ram')
@@ -224,9 +234,40 @@ def test_launch_game(mock_power, mock_flush, mock_suspend, mock_monitor, mock_pu
 @patch('main.suspend_services')
 @patch('main.flush_dns_and_reset')
 @patch('main.set_power_plan')
-def test_launch_game_no_profile(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists):
+def test_launch_game_no_profile(mock_power, mock_flush, mock_suspend, mock_monitor, mock_purge, mock_subprocess, mock_exists, mock_scan):
     # Mock the system modification functions
     mock_exists.return_value = True
+    mock_scan.return_value = [{
+        "id": "730",
+        "title": "Counter-Strike 2",
+        "exe_path": "/mock/cs2.exe",
+        "exe_name": "cs2.exe",
+        "icon_path": None,
+        "profile": {}
+    }]
+
+    profile = {
+        "high_priority": False,
+        "network_flush": False,
+        "power_plan": False,
+        "suspend_services": False,
+        "ram_purge": False
+    }
+
+    result = main.launch_game("730", profile, "/mock/untrusted.exe", "untrusted.exe")
+
+    assert result['status'] == 'success'
+    mock_power.assert_not_called()
+    mock_flush.assert_not_called()
+    mock_suspend.assert_not_called()
+    mock_monitor.assert_not_called()
+    mock_purge.assert_not_called()
+    mock_subprocess.assert_called_once()
+
+@patch('main.scan_games')
+def test_launch_game_untrusted(mock_scan):
+    # Mock an empty game list
+    mock_scan.return_value = []
 
     profile = {
         "high_priority": False,
@@ -238,13 +279,8 @@ def test_launch_game_no_profile(mock_power, mock_flush, mock_suspend, mock_monit
 
     result = main.launch_game("730", profile, "/mock/cs2.exe", "cs2.exe")
 
-    assert result['status'] == 'success'
-    mock_power.assert_not_called()
-    mock_flush.assert_not_called()
-    mock_suspend.assert_not_called()
-    mock_monitor.assert_not_called()
-    mock_purge.assert_not_called()
-    mock_subprocess.assert_called_once()
+    assert result['status'] == 'error'
+    assert 'not found in trusted library' in result['message']
 
 @patch('main.scan_games')
 def test_get_prime_games(mock_scan):

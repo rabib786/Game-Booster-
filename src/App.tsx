@@ -269,7 +269,7 @@ function App() {
 
   // Expose a function to Python to add logs asynchronously
   useEffect(() => {
-    if (window.eel) {
+    if (window.eel && window.eel.expose) {
       window.eel.expose(addLogFromPython, 'add_log');
     }
   }, []);
