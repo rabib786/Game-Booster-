@@ -1,8 +1,12 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from './App';
 
 describe('App', () => {
+  beforeEach(() => {
+    vi.stubGlobal('eel', undefined);
+  });
+
   it('renders Library tab by default', () => {
     render(<App />);
     expect(screen.getByText(/My Library/i)).toBeInTheDocument();
@@ -43,5 +47,97 @@ describe('App', () => {
     fireEvent.click(flushBtn);
 
     expect(screen.getByText('Flushing...')).toBeInTheDocument();
+  });
+
+  describe('handleCleanSystem', () => {
+    it('handles successful cleaning (window.eel)', async () => {
+      const cleanSystemMock = vi.fn().mockResolvedValue({ status: 'success', message: 'Successfully cleaned 500MB' });
+      vi.stubGlobal('eel', {
+        clean_system: () => cleanSystemMock
+      });
+
+      render(<App />);
+
+      // Navigate to Booster Prime tab
+      fireEvent.click(screen.getByText('Booster Prime'));
+
+      // Find and click Clean Now button
+      const cleanBtn = screen.getByText('Clean Now');
+      fireEvent.click(cleanBtn);
+
+      // Verify it enters cleaning state
+      expect(screen.getByText('Cleaning...')).toBeInTheDocument();
+      expect(cleanBtn).toBeDisabled();
+
+      // Wait for it to finish
+      await waitFor(() => {
+        expect(screen.queryByText('Cleaning...')).not.toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Clean Now')).not.toBeDisabled();
+      expect(screen.getByText(/Successfully cleaned 500MB/i)).toBeInTheDocument();
+    });
+
+    it('handles failed cleaning (window.eel)', async () => {
+      const cleanSystemMock = vi.fn().mockResolvedValue({ status: 'error', message: 'Disk access denied' });
+      vi.stubGlobal('eel', {
+        clean_system: () => cleanSystemMock
+      });
+
+      render(<App />);
+
+      fireEvent.click(screen.getByText('Booster Prime'));
+      const cleanBtn = screen.getByText('Clean Now');
+      fireEvent.click(cleanBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Cleaning...')).not.toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/Error: Disk access denied/i)).toBeInTheDocument();
+    });
+
+    it('handles network/backend error (window.eel)', async () => {
+      const cleanSystemMock = vi.fn().mockRejectedValue(new Error('Network Error'));
+      vi.stubGlobal('eel', {
+        clean_system: () => cleanSystemMock
+      });
+
+      render(<App />);
+
+      fireEvent.click(screen.getByText('Booster Prime'));
+      const cleanBtn = screen.getByText('Clean Now');
+      fireEvent.click(cleanBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Cleaning...')).not.toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/Failed to communicate with backend: Error: Network Error/i)).toBeInTheDocument();
+    });
+
+    it('handles cleaning in web preview mode (no window.eel)', async () => {
+      vi.stubGlobal('eel', undefined);
+      vi.useFakeTimers();
+
+      render(<App />);
+
+      fireEvent.click(screen.getByText('Booster Prime'));
+      const cleanBtn = screen.getByText('Clean Now');
+      fireEvent.click(cleanBtn);
+
+      expect(screen.getByText('Cleaning...')).toBeInTheDocument();
+
+      // Fast-forward 1000ms as per App.tsx code
+      vi.advanceTimersByTime(1000);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Cleaning...')).not.toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/\[Web Preview\] Cleaned 150.45 MB of Junk./i)).toBeInTheDocument();
+
+      vi.useRealTimers();
+    });
   });
 });
