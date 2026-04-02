@@ -118,7 +118,7 @@ describe('App', () => {
 
     it('handles cleaning in web preview mode (no window.eel)', async () => {
       vi.stubGlobal('eel', undefined);
-      vi.useFakeTimers();
+      vi.useFakeTimers({ shouldAdvanceTime: true });
 
       render(<App />);
 
@@ -128,12 +128,12 @@ describe('App', () => {
 
       expect(screen.getByText('Cleaning...')).toBeInTheDocument();
 
-      // Fast-forward 1000ms as per App.tsx code
-      vi.advanceTimersByTime(1000);
+      // Fast-forward timers to resolve setTimeout
+      vi.runAllTimers();
 
       await waitFor(() => {
         expect(screen.queryByText('Cleaning...')).not.toBeInTheDocument();
-      });
+      }, { timeout: 2000 });
 
       expect(screen.getByText(/\[Web Preview\] Cleaned 150.45 MB of Junk./i)).toBeInTheDocument();
 

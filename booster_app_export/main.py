@@ -1207,6 +1207,19 @@ def launch_game(game_id, profile, exe_path, exe_name):
       "ram_purge": True
     }
     """
+    # Security Validation: Retrieve trusted game path from backend scan
+    installed_games = scan_games()
+    trusted_game = next((g for g in installed_games if g.get('id') == game_id), None)
+
+    if not trusted_game:
+        return {"status": "error", "message": f"Game ID '{game_id}' not found in trusted library."}
+
+    trusted_exe_path = trusted_game.get('exe_path')
+    trusted_exe_name = trusted_game.get('exe_name')
+
+    if not trusted_exe_path or not trusted_exe_name:
+        return {"status": "error", "message": "Missing executable information for the selected game."}
+
     try:
         details = []
 
@@ -1227,16 +1240,16 @@ def launch_game(game_id, profile, exe_path, exe_name):
             details.append("Services suspended.")
 
         if profile.get('high_priority'):
-            start_monitor(exe_name)
-            details.append(f"Process monitor started for {exe_name}.")
+            start_monitor(trusted_exe_name)
+            details.append(f"Process monitor started for {trusted_exe_name}.")
 
         # Launch the game executable
-        if os.path.exists(exe_path):
-            subprocess.Popen([exe_path], cwd=os.path.dirname(exe_path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
-            details.append(f"Launched {exe_name}.")
+        if os.path.exists(trusted_exe_path):
+            subprocess.Popen([trusted_exe_path], cwd=os.path.dirname(trusted_exe_path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+            details.append(f"Launched {trusted_exe_name}.")
         else:
             # Fallback for mock/testing
-            details.append(f"Simulated launch for {exe_name} (path not found).")
+            details.append(f"Simulated launch for {trusted_exe_name} (path not found).")
 
         return {"status": "success", "message": "Game launched successfully.", "details": " | ".join(details)}
     except Exception as e:
