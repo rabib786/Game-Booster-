@@ -695,9 +695,12 @@ function App() {
     return liveProcesses.map((proc, idx) => {
       const isSelected = selectedSet.has(proc.pid);
       return (
-        <div
+        <button
           key={proc.pid}
-          className={`p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-pointer transition-colors ${isSelected ? 'opacity-100 ring-1 ring-razer-green/50 bg-razer-green/5' : 'opacity-50 hover:opacity-100'}`}
+          role="checkbox"
+          aria-checked={isSelected}
+          aria-label={`Select ${proc.name}`}
+          className={`w-full text-left p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isSelected ? 'opacity-100 ring-1 ring-razer-green/50 bg-razer-green/5' : 'opacity-50 hover:opacity-100'}`}
           onClick={() => {
             if (isSelected) {
               setSelectedPids(prev => prev.filter(id => id !== proc.pid));
@@ -718,7 +721,7 @@ function App() {
               {isSelected && <div className="w-2 h-2 rounded-full bg-black"></div>}
             </div>
           </div>
-        </div>
+        </button>
       );
     });
   }, [liveProcesses, selectedPids]);
@@ -896,7 +899,9 @@ function App() {
             <div>
               <h3 className="text-white font-bold mb-2">Start Monitor</h3>
               <p className="text-xs text-gray-400 mb-4">Assigns high priority to your game and lowers background apps.</p>
+              <label htmlFor="targetExeInput" className="sr-only">Target Game Executable</label>
               <input
+                id="targetExeInput"
                 type="text"
                 value={targetExe}
                 onChange={(e) => setTargetExe(e.target.value)}
