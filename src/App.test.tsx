@@ -53,7 +53,8 @@ describe('App', () => {
     it('handles successful cleaning (window.eel)', async () => {
       const cleanSystemMock = vi.fn().mockResolvedValue({ status: 'success', message: 'Successfully cleaned 500MB' });
       vi.stubGlobal('eel', {
-        clean_system: () => cleanSystemMock
+        clean_system: () => cleanSystemMock,
+        get_prime_games: () => vi.fn().mockResolvedValue([])
       });
 
       render(<App />);
@@ -81,7 +82,8 @@ describe('App', () => {
     it('handles failed cleaning (window.eel)', async () => {
       const cleanSystemMock = vi.fn().mockResolvedValue({ status: 'error', message: 'Disk access denied' });
       vi.stubGlobal('eel', {
-        clean_system: () => cleanSystemMock
+        clean_system: () => cleanSystemMock,
+        get_prime_games: () => vi.fn().mockResolvedValue([])
       });
 
       render(<App />);
@@ -100,7 +102,8 @@ describe('App', () => {
     it('handles network/backend error (window.eel)', async () => {
       const cleanSystemMock = vi.fn().mockRejectedValue(new Error('Network Error'));
       vi.stubGlobal('eel', {
-        clean_system: () => cleanSystemMock
+        clean_system: () => cleanSystemMock,
+        get_prime_games: () => vi.fn().mockResolvedValue([])
       });
 
       render(<App />);
