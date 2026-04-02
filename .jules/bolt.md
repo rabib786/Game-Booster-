@@ -24,3 +24,7 @@
 ## 2025-04-01 - Avoid psutil.process_iter for PID-only lookups
 **Learning:** Using `psutil.process_iter(['pid'])` instantiates full process objects which carries significant overhead. When only needing the raw Process IDs (e.g., for direct OS API calls via `ctypes`), using `psutil.pids()` directly is significantly faster (~15x) as it skips object instantiation and fetches a raw list of integers.
 **Action:** Replace `psutil.process_iter(['pid'])` with `psutil.pids()` in loops where only the Process ID is required and no other process metadata is needed.
+
+## 2025-04-02 - Combine Multiple Process Iterations
+**Learning:** Calling `psutil.process_iter()` multiple times within a short period (like in a polling loop) is very expensive due to OS-level system calls. In `monitor_game_process`, we were making two full passes: one to find the game, and another to adjust background apps.
+**Action:** Consolidate multiple system-wide metadata scans into a single pass. Process the properties you need in one go (e.g., finding the game AND collecting background apps) to halve the number of expensive system calls.

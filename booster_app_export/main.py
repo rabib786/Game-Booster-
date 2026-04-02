@@ -270,19 +270,38 @@ def monitor_game_process():
     all_cores_set = set(all_cores) if all_cores else None
     bg_cores_set = set(bg_cores) if bg_cores else None
 
+    # ⚡ Bolt Optimization: Move static sets outside the polling loop to prevent repeated allocation
+    critical_processes_set = set([
+        'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
+        'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
+        'spoolsv.exe', 'svchost.exe', 'taskmgr.exe'
+    ])
+    bg_targets_set = set(['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe'])
+
     while monitoring_active:
         target_game_exe_lower = target_game_exe.lower()
         found_game = False
         game_proc = None
+        bg_procs_to_adjust = []
 
-        # 1. Find the game process
+        # ⚡ Bolt Optimization: Consolidate psutil.process_iter calls into a single pass
         for proc in psutil.process_iter(['name']):
             try:
                 name = proc.info.get('name')
-                if name and name.lower() == target_game_exe_lower:
+                if not name:
+                    continue
+                name_lower = name.lower()
+
+                # Check for game process
+                if not found_game and name_lower == target_game_exe_lower:
                     found_game = True
                     game_proc = proc
-                    break
+                    # We don't break here anymore because we also need to gather background processes
+
+                # Check for background apps to adjust
+                if name_lower not in critical_processes_set and name_lower in bg_targets_set:
+                    bg_procs_to_adjust.append(proc)
+
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
@@ -328,12 +347,6 @@ def monitor_game_process():
                     pass
 
             # Whitelist critical system processes and our own process tree
-            # ⚡ Bolt Optimization: Use O(1) set to prevent O(N*M) lookups inside the process iteration loop
-            critical_processes_set = set([
-                'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
-                'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
-                'spoolsv.exe', 'svchost.exe', 'taskmgr.exe'
-            ])
             whitelist_pids = set()
             try:
                 current_process = psutil.Process()
@@ -344,26 +357,20 @@ def monitor_game_process():
                 pass
 
             # Set background apps to low priority and restrict core affinity
-            # ⚡ Bolt Optimization: Use O(1) set lookup
-            bg_targets_set = set(['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe'])
-            for proc in psutil.process_iter(['name']):
+            for proc in bg_procs_to_adjust:
                 try:
-                    name = proc.info.get('name')
                     if proc.pid in whitelist_pids:
                         continue
-                    if name and name.lower() in critical_processes_set:
-                        continue
-                    if name and name.lower() in bg_targets_set:
-                        if proc.nice() != LOW_PRIO:
-                            proc.nice(LOW_PRIO)
+                    if proc.nice() != LOW_PRIO:
+                        proc.nice(LOW_PRIO)
 
-                        if bg_cores_set:
-                            try:
-                                current_affinity = proc.cpu_affinity()
-                                if set(current_affinity) != bg_cores_set:
-                                    proc.cpu_affinity(bg_cores)
-                            except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
-                                pass
+                    if bg_cores_set:
+                        try:
+                            current_affinity = proc.cpu_affinity()
+                            if set(current_affinity) != bg_cores_set:
+                                proc.cpu_affinity(bg_cores)
+                        except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
+                            pass
 
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass

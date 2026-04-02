@@ -25,7 +25,9 @@ interface SessionSummaryData {
   ram_cleared_gb: number;
 }
 
-interface SessionSummaryResponse extends EelResponse {
+interface SessionSummaryResponse {
+  status: 'success' | 'error';
+  message: string;
   details: SessionSummaryData;
 }
 
