@@ -269,20 +269,32 @@ def monitor_game_process():
     # ⚡ Bolt Optimization: Pre-calculate sets and lowercased target string to prevent O(N) re-evaluations
     all_cores_set = set(all_cores) if all_cores else None
     bg_cores_set = set(bg_cores) if bg_cores else None
+    bg_targets_set = set(['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe'])
+    critical_processes_set = set([
+        'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
+        'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
+        'spoolsv.exe', 'svchost.exe', 'taskmgr.exe'
+    ])
 
     while monitoring_active:
         target_game_exe_lower = target_game_exe.lower()
         found_game = False
         game_proc = None
+        bg_processes = []
 
-        # 1. Find the game process
+        # ⚡ Bolt Optimization: Consolidate psutil.process_iter loops into a single pass
         for proc in psutil.process_iter(['name']):
             try:
                 name = proc.info.get('name')
-                if name and name.lower() == target_game_exe_lower:
+                if not name:
+                    continue
+                name_lower = name.lower()
+
+                if name_lower == target_game_exe_lower:
                     found_game = True
                     game_proc = proc
-                    break
+                elif name_lower in bg_targets_set:
+                    bg_processes.append((proc, name_lower))
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
@@ -328,12 +340,6 @@ def monitor_game_process():
                     pass
 
             # Whitelist critical system processes and our own process tree
-            # ⚡ Bolt Optimization: Use O(1) set to prevent O(N*M) lookups inside the process iteration loop
-            critical_processes_set = set([
-                'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
-                'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
-                'spoolsv.exe', 'svchost.exe', 'taskmgr.exe'
-            ])
             whitelist_pids = set()
             try:
                 current_process = psutil.Process()
@@ -344,26 +350,23 @@ def monitor_game_process():
                 pass
 
             # Set background apps to low priority and restrict core affinity
-            # ⚡ Bolt Optimization: Use O(1) set lookup
-            bg_targets_set = set(['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe'])
-            for proc in psutil.process_iter(['name']):
+            for proc, name_lower in bg_processes:
                 try:
-                    name = proc.info.get('name')
                     if proc.pid in whitelist_pids:
                         continue
-                    if name and name.lower() in critical_processes_set:
+                    if name_lower in critical_processes_set:
                         continue
-                    if name and name.lower() in bg_targets_set:
-                        if proc.nice() != LOW_PRIO:
-                            proc.nice(LOW_PRIO)
 
-                        if bg_cores_set:
-                            try:
-                                current_affinity = proc.cpu_affinity()
-                                if set(current_affinity) != bg_cores_set:
-                                    proc.cpu_affinity(bg_cores)
-                            except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
-                                pass
+                    if proc.nice() != LOW_PRIO:
+                        proc.nice(LOW_PRIO)
+
+                    if bg_cores_set:
+                        try:
+                            current_affinity = proc.cpu_affinity()
+                            if set(current_affinity) != bg_cores_set:
+                                proc.cpu_affinity(bg_cores)
+                        except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
+                            pass
 
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
