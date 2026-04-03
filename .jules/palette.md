@@ -10,3 +10,6 @@
 ## 2024-05-15 - [Interactive Hover Overlays Accessibility]
 **Learning:** Hover overlays that rely solely on `group-hover:opacity-100` hide their interactable child elements from keyboard users, as tab-focusing into them doesn't trigger the hover state, keeping them invisible while focused.
 **Action:** When creating container overlays with hidden interactable children, add the `focus-within:opacity-100` utility class alongside hover states so that the overlay becomes visible when a user tabs into any element inside it. Always pair this with `focus-visible` ring styles on the actual buttons for clear focus indication.
+## 2026-04-03 - [Linking helper texts with `aria-describedby`]
+**Learning:** Found an accessibility issue pattern where helper text for input elements was present but not explicitly linked. This prevents screen readers from announcing this crucial context when the input gains focus.
+**Action:** Use `aria-describedby` on the `<input>` element pointing to an `id` placed on the helper text. This ensures screen readers read both the primary label and the additional helper description when users tab to the input, drastically improving context for visually impaired users.
