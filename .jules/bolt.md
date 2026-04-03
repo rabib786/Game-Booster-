@@ -28,3 +28,7 @@
 ## 2025-04-02 - Combine Multiple Process Iterations
 **Learning:** Calling `psutil.process_iter()` multiple times within a short period (like in a polling loop) is very expensive due to OS-level system calls. In `monitor_game_process`, we were making two full passes: one to find the game, and another to adjust background apps.
 **Action:** Consolidate multiple system-wide metadata scans into a single pass. Process the properties you need in one go (e.g., finding the game AND collecting background apps) to halve the number of expensive system calls.
+
+## 2025-04-03 - Cache Dynamic System States in Polling Loops
+**Learning:** When optimizing continuous polling loops (like `while monitoring_active:`), placing dynamic system state calculations (such as fetching `current_process.children(recursive=True)` for whitelisting) inside the loop triggers expensive OS-level allocations on every iteration. However, strictly hoisting these calculations outside the loop can lead to stale cache regressions, as newly spawned child processes won't be captured.
+**Action:** Introduce a periodic cache refresh mechanism. Hoist dynamic data structures, but update them conditionally based on time (e.g., `if current_time - last_refresh > 60:`) rather than strictly keeping them static. This balances performance optimization with keeping dynamic system states accurate.

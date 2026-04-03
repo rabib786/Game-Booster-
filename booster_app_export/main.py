@@ -278,8 +278,17 @@ def monitor_game_process():
     ])
     bg_targets_set = set(['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe'])
 
+    # ⚡ Bolt Optimization: Cache dynamic process tree state to prevent expensive OS-level allocations on every loop
+    whitelist_pids = set()
+    last_whitelist_refresh = 0
+    cached_target_game_exe = None
+    target_game_exe_lower = ""
+
     while monitoring_active:
-        target_game_exe_lower = target_game_exe.lower()
+        # Only re-evaluate lower() if the target executable has changed
+        if target_game_exe != cached_target_game_exe:
+            cached_target_game_exe = target_game_exe
+            target_game_exe_lower = target_game_exe.lower()
         found_game = False
         game_proc = None
         bg_procs_to_adjust = []
@@ -347,14 +356,19 @@ def monitor_game_process():
                     pass
 
             # Whitelist critical system processes and our own process tree
-            whitelist_pids = set()
-            try:
-                current_process = psutil.Process()
-                whitelist_pids.add(current_process.pid)
-                for child in current_process.children(recursive=True):
-                    whitelist_pids.add(child.pid)
-            except Exception:
-                pass
+            # Refresh this cache periodically to catch newly spawned child processes
+            # without incurring the heavy O(N) OS-level tree building cost every 5 seconds
+            current_time = time.time()
+            if current_time - last_whitelist_refresh > 60:
+                whitelist_pids.clear()
+                try:
+                    current_process = psutil.Process()
+                    whitelist_pids.add(current_process.pid)
+                    for child in current_process.children(recursive=True):
+                        whitelist_pids.add(child.pid)
+                    last_whitelist_refresh = current_time
+                except Exception:
+                    pass
 
             # Set background apps to low priority and restrict core affinity
             for proc in bg_procs_to_adjust:
