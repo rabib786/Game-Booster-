@@ -898,7 +898,7 @@ function App() {
           <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
             <div>
               <h3 className="text-white font-bold mb-2">Start Monitor</h3>
-              <p className="text-xs text-gray-400 mb-4">Assigns high priority to your game and lowers background apps.</p>
+              <p id="targetExeHelp" className="text-xs text-gray-400 mb-4">Assigns high priority to your game and lowers background apps.</p>
               <label htmlFor="targetExeInput" className="sr-only">Target Game Executable</label>
               <input
                 id="targetExeInput"
@@ -906,6 +906,7 @@ function App() {
                 value={targetExe}
                 onChange={(e) => setTargetExe(e.target.value)}
                 placeholder="Game .exe (e.g., csgo.exe)"
+                aria-describedby="targetExeHelp"
                 className="w-full bg-black border border-gray-700 text-white p-2 text-sm rounded mb-4 focus:outline-none focus:border-razer-green"
               />
             </div>
@@ -1094,10 +1095,11 @@ function App() {
                     type="text"
                     value={boostHotkey}
                     onChange={(e) => setBoostHotkey(e.target.value)}
+                    aria-describedby="boostHotkeyHelp"
                     className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-razer-green focus:outline-none transition-colors"
                     placeholder="e.g. alt+b"
                   />
-                  <p className="text-xs text-gray-500 mt-2">Trigger game boost optimizations instantly.</p>
+                  <p id="boostHotkeyHelp" className="text-xs text-gray-500 mt-2">Trigger game boost optimizations instantly.</p>
                 </div>
 
                 <div>
@@ -1107,10 +1109,11 @@ function App() {
                     type="text"
                     value={overlayHotkey}
                     onChange={(e) => setOverlayHotkey(e.target.value)}
+                    aria-describedby="overlayHotkeyHelp"
                     className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-razer-green focus:outline-none transition-colors"
                     placeholder="e.g. alt+o"
                   />
-                  <p className="text-xs text-gray-500 mt-2">Toggle the click-through telemetry overlay.</p>
+                  <p id="overlayHotkeyHelp" className="text-xs text-gray-500 mt-2">Toggle the click-through telemetry overlay.</p>
                 </div>
               </div>
 
