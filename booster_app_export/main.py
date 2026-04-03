@@ -614,42 +614,45 @@ def clean_system():
         if not t_dir or not os.path.exists(t_dir):
             continue
 
-        for item in os.listdir(t_dir):
-            item_path = os.path.join(t_dir, item)
-            try:
-                if os.path.isfile(item_path):
-                    size = os.path.getsize(item_path)
-                    os.unlink(item_path)
-                    freed_space += size
-                elif os.path.isdir(item_path):
-                    # ⚡ Bolt Optimization: Use a single bottom-up traversal to calculate size
-                    # and delete simultaneously.
-                    dir_size = 0
-                    for dirpath, dirnames, filenames in os.walk(item_path, topdown=False):
-                        for f in filenames:
-                            fp = os.path.join(dirpath, f)
-                            try:
-                                if not os.path.islink(fp):
-                                    f_size = os.path.getsize(fp)
-                                    os.unlink(fp)
-                                    dir_size += f_size
-                                else:
-                                    os.unlink(fp)
-                            except Exception:
-                                pass
-                        for d in dirnames:
-                            dp = os.path.join(dirpath, d)
-                            try:
-                                os.rmdir(dp)
-                            except Exception:
-                                pass
-                    try:
-                        os.rmdir(item_path)
-                    except Exception:
-                        pass
-                    freed_space += dir_size
-            except Exception:
-                pass
+        # ⚡ Bolt Optimization: Replace os.listdir + stat calls with os.scandir to eliminate redundant system calls
+        # and improve directory scanning speed.
+        with os.scandir(t_dir) as it:
+            for entry in it:
+                item_path = entry.path
+                try:
+                    if entry.is_file():
+                        size = entry.stat().st_size
+                        os.unlink(item_path)
+                        freed_space += size
+                    elif entry.is_dir():
+                        # ⚡ Bolt Optimization: Use a single bottom-up traversal to calculate size
+                        # and delete simultaneously.
+                        dir_size = 0
+                        for dirpath, dirnames, filenames in os.walk(item_path, topdown=False):
+                            for f in filenames:
+                                fp = os.path.join(dirpath, f)
+                                try:
+                                    if not os.path.islink(fp):
+                                        f_size = os.path.getsize(fp)
+                                        os.unlink(fp)
+                                        dir_size += f_size
+                                    else:
+                                        os.unlink(fp)
+                                except Exception:
+                                    pass
+                            for d in dirnames:
+                                dp = os.path.join(dirpath, d)
+                                try:
+                                    os.rmdir(dp)
+                                except Exception:
+                                    pass
+                        try:
+                            os.rmdir(item_path)
+                        except Exception:
+                            pass
+                        freed_space += dir_size
+                except Exception:
+                    pass
 
     return {
         "status": "success",

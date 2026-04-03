@@ -35,26 +35,36 @@ from main import clean_system
 class TestCleanSystem(unittest.TestCase):
     @patch('os.environ.get')
     @patch('os.path.exists')
-    @patch('os.listdir')
-    @patch('os.path.isfile')
-    @patch('os.path.isdir')
-    @patch('os.path.getsize')
+    @patch('os.scandir')
     @patch('os.unlink')
     @patch('os.walk')
     @patch('os.rmdir')
     def test_clean_system_locked_file(self, mock_rmdir, mock_walk, mock_unlink,
-                                     mock_getsize, mock_isdir, mock_isfile,
-                                     mock_listdir, mock_exists, mock_environ_get):
+                                     mock_scandir, mock_exists, mock_environ_get):
         """Test that locked files/directories don't cause the function to crash."""
         # Setup
         mock_environ_get.return_value = 'C:\\Temp'
         mock_exists.return_value = True
-        mock_listdir.return_value = ['locked_file.txt', 'locked_dir']
+
+        # Create mock DirEntry objects
+        file_entry = MagicMock()
+        file_entry.name = 'locked_file.txt'
+        file_entry.path = 'C:\\Temp\\locked_file.txt'
+        file_entry.is_file.return_value = True
+        file_entry.is_dir.return_value = False
+        stat_mock = MagicMock()
+        stat_mock.st_size = 1024
+        file_entry.stat.return_value = stat_mock
+
+        dir_entry = MagicMock()
+        dir_entry.name = 'locked_dir'
+        dir_entry.path = 'C:\\Temp\\locked_dir'
+        dir_entry.is_file.return_value = False
+        dir_entry.is_dir.return_value = True
+
+        mock_scandir.return_value.__enter__.return_value = [file_entry, dir_entry]
 
         # Scenario 1: locked_file.txt is a file and raises OSError when unlinked
-        mock_isfile.side_effect = lambda path: 'locked_file.txt' in path
-        mock_isdir.side_effect = lambda path: 'locked_dir' in path
-        mock_getsize.return_value = 1024
         mock_unlink.side_effect = OSError("File is locked")
 
         # Scenario 2: locked_dir is a directory and raises OSError when rmdir'd
@@ -75,26 +85,37 @@ class TestCleanSystem(unittest.TestCase):
 
     @patch('os.environ.get')
     @patch('os.path.exists')
-    @patch('os.listdir')
-    @patch('os.path.isfile')
-    @patch('os.path.isdir')
-    @patch('os.path.getsize')
+    @patch('os.scandir')
     @patch('os.unlink')
     @patch('os.walk')
     @patch('os.rmdir')
     def test_clean_system_mixed_files(self, mock_rmdir, mock_walk, mock_unlink,
-                                     mock_getsize, mock_isdir, mock_isfile,
-                                     mock_listdir, mock_exists, mock_environ_get):
+                                     mock_scandir, mock_exists, mock_environ_get):
         """Test that some files are deleted even if others are locked."""
         # Setup
         mock_environ_get.return_value = 'C:\\Temp'
         mock_exists.return_value = True
-        mock_listdir.return_value = ['normal_file.txt', 'locked_file.txt']
 
-        mock_isfile.return_value = True
-        mock_isdir.return_value = False
+        # Create mock DirEntry objects
+        normal_entry = MagicMock()
+        normal_entry.name = 'normal_file.txt'
+        normal_entry.path = 'C:\\Temp\\normal_file.txt'
+        normal_entry.is_file.return_value = True
+        normal_entry.is_dir.return_value = False
+        stat_mock1 = MagicMock()
+        stat_mock1.st_size = 1024 * 1024 # 1MB
+        normal_entry.stat.return_value = stat_mock1
 
-        mock_getsize.return_value = 1024 * 1024 # 1MB
+        locked_entry = MagicMock()
+        locked_entry.name = 'locked_file.txt'
+        locked_entry.path = 'C:\\Temp\\locked_file.txt'
+        locked_entry.is_file.return_value = True
+        locked_entry.is_dir.return_value = False
+        stat_mock2 = MagicMock()
+        stat_mock2.st_size = 1024 * 1024 # 1MB
+        locked_entry.stat.return_value = stat_mock2
+
+        mock_scandir.return_value.__enter__.return_value = [normal_entry, locked_entry]
 
         def unlink_side_effect(path):
             if 'locked_file.txt' in path:
