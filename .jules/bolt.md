@@ -28,3 +28,7 @@
 ## 2025-04-02 - Combine Multiple Process Iterations
 **Learning:** Calling `psutil.process_iter()` multiple times within a short period (like in a polling loop) is very expensive due to OS-level system calls. In `monitor_game_process`, we were making two full passes: one to find the game, and another to adjust background apps.
 **Action:** Consolidate multiple system-wide metadata scans into a single pass. Process the properties you need in one go (e.g., finding the game AND collecting background apps) to halve the number of expensive system calls.
+
+## 2025-04-03 - Cache Process Tree in Polling Loops
+**Learning:** Calling `current_process.children(recursive=True)` inside a continuous polling loop (like `while monitoring_active:`) causes severe idle performance regressions due to expensive, repeated OS-level allocations to build the process tree.
+**Action:** When optimizing continuous polling loops, hoist static data structures outside the loop. For dynamic system states (like process tree whitelists) that do not change rapidly, use a periodic cache refresh mechanism (e.g., update every 60 seconds) rather than regenerating them on every iteration.

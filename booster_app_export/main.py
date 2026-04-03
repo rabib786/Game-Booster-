@@ -278,6 +278,10 @@ def monitor_game_process():
     ])
     bg_targets_set = set(['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe'])
 
+    # Cache for whitelist to avoid expensive recursive OS calls every 5 seconds
+    cached_whitelist_pids = set()
+    last_whitelist_refresh = 0
+
     while monitoring_active:
         target_game_exe_lower = target_game_exe.lower()
         found_game = False
@@ -347,19 +351,22 @@ def monitor_game_process():
                     pass
 
             # Whitelist critical system processes and our own process tree
-            whitelist_pids = set()
-            try:
-                current_process = psutil.Process()
-                whitelist_pids.add(current_process.pid)
-                for child in current_process.children(recursive=True):
-                    whitelist_pids.add(child.pid)
-            except Exception:
-                pass
+            # ⚡ Bolt Optimization: Cache whitelist to avoid expensive recursive OS calls every iteration
+            if time.time() - last_whitelist_refresh > 60:
+                cached_whitelist_pids = set()
+                try:
+                    current_process = psutil.Process()
+                    cached_whitelist_pids.add(current_process.pid)
+                    for child in current_process.children(recursive=True):
+                        cached_whitelist_pids.add(child.pid)
+                    last_whitelist_refresh = time.time()
+                except Exception:
+                    pass
 
             # Set background apps to low priority and restrict core affinity
             for proc in bg_procs_to_adjust:
                 try:
-                    if proc.pid in whitelist_pids:
+                    if proc.pid in cached_whitelist_pids:
                         continue
                     if proc.nice() != LOW_PRIO:
                         proc.nice(LOW_PRIO)
