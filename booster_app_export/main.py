@@ -1046,68 +1046,82 @@ def scan_games(force_refresh=False):
 
         steamapps_path = os.path.join(steam_path, "steamapps")
         if os.path.exists(steamapps_path):
-            for filename in os.listdir(steamapps_path):
-                if filename.endswith(".acf"):
-                    acf_path = os.path.join(steamapps_path, filename)
-                    try:
-                        with open(acf_path, "r", encoding="utf-8") as f:
-                            content = f.read()
+            # ⚡ Bolt Optimization: Use os.scandir instead of os.listdir and os.walk
+            # to eliminate redundant os.path system calls and improve directory scanning speed.
+            with os.scandir(steamapps_path) as it:
+                for entry in it:
+                    if entry.is_file() and entry.name.endswith(".acf"):
+                        acf_path = entry.path
+                        try:
+                            with open(acf_path, "r", encoding="utf-8") as f:
+                                content = f.read()
 
-                            name_match = re.search(r'"name"\s+"([^"]+)"', content)
-                            dir_match = re.search(r'"installdir"\s+"([^"]+)"', content)
-                            appid_match = re.search(r'"appid"\s+"([^"]+)"', content)
+                                name_match = re.search(r'"name"\s+"([^"]+)"', content)
+                                dir_match = re.search(r'"installdir"\s+"([^"]+)"', content)
+                                appid_match = re.search(r'"appid"\s+"([^"]+)"', content)
 
-                            if name_match and dir_match and appid_match:
-                                title = name_match.group(1)
-                                install_dir = dir_match.group(1)
-                                appid = appid_match.group(1)
+                                if name_match and dir_match and appid_match:
+                                    title = name_match.group(1)
+                                    install_dir = dir_match.group(1)
+                                    appid = appid_match.group(1)
 
-                                game_dir = os.path.join(steamapps_path, "common", install_dir)
-                                if not os.path.exists(game_dir):
-                                    continue
+                                    game_dir = os.path.join(steamapps_path, "common", install_dir)
+                                    if not os.path.exists(game_dir):
+                                        continue
 
-                                main_exe = None
-                                max_size = -1
-                                for root, _, files in os.walk(game_dir):
-                                    for file in files:
-                                        if file.lower().endswith(".exe"):
-                                            exe_path = os.path.join(root, file)
-                                            try:
-                                                size = os.path.getsize(exe_path)
-                                                if size > max_size:
-                                                    max_size = size
-                                                    main_exe = exe_path
-                                            except Exception:
-                                                pass
+                                    main_exe = None
+                                    max_size = -1
 
-                                if main_exe:
-                                    exe_name = os.path.basename(main_exe)
-                                    icon_filename = f"steam_{appid}.ico"
-                                    icon_path_full = os.path.join(icons_dir, icon_filename)
-
-                                    if IconExtractor and not os.path.exists(icon_path_full):
+                                    # Recursive scan using os.scandir to avoid os.walk + os.path.getsize overhead
+                                    def _scan_for_exe(d_path):
+                                        nonlocal main_exe, max_size
                                         try:
-                                            extractor = IconExtractor(main_exe)
-                                            extractor.export_icon(icon_path_full)
+                                            with os.scandir(d_path) as exe_it:
+                                                for exe_entry in exe_it:
+                                                    try:
+                                                        if exe_entry.is_dir(follow_symlinks=False):
+                                                            _scan_for_exe(exe_entry.path)
+                                                        elif exe_entry.name.lower().endswith(".exe"):
+                                                            # Cache the stat result implicitly provided by os.scandir
+                                                            size = exe_entry.stat(follow_symlinks=False).st_size
+                                                            if size > max_size:
+                                                                max_size = size
+                                                                main_exe = exe_entry.path
+                                                    except Exception:
+                                                        pass
                                         except Exception:
                                             pass
 
-                                    games.append({
-                                        "id": f"steam_{appid}",
-                                        "title": title,
-                                        "exe_path": main_exe,
-                                        "exe_name": exe_name,
-                                        "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
-                                        "profile": {
-                                            "high_priority": True,
-                                            "network_flush": True,
-                                            "power_plan": True,
-                                            "suspend_services": True,
-                                            "ram_purge": True
-                                        }
-                                    })
-                    except Exception:
-                        pass
+                                    _scan_for_exe(game_dir)
+
+                                    if main_exe:
+                                        exe_name = os.path.basename(main_exe)
+                                        icon_filename = f"steam_{appid}.ico"
+                                        icon_path_full = os.path.join(icons_dir, icon_filename)
+
+                                        if IconExtractor and not os.path.exists(icon_path_full):
+                                            try:
+                                                extractor = IconExtractor(main_exe)
+                                                extractor.export_icon(icon_path_full)
+                                            except Exception:
+                                                pass
+
+                                        games.append({
+                                            "id": f"steam_{appid}",
+                                            "title": title,
+                                            "exe_path": main_exe,
+                                            "exe_name": exe_name,
+                                            "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
+                                            "profile": {
+                                                "high_priority": True,
+                                                "network_flush": True,
+                                                "power_plan": True,
+                                                "suspend_services": True,
+                                                "ram_purge": True
+                                            }
+                                        })
+                        except Exception:
+                            pass
     except OSError:
         pass
 
@@ -1119,46 +1133,48 @@ def scan_games(force_refresh=False):
 
         if os.path.exists(epic_manifests_dir):
             import json
-            for filename in os.listdir(epic_manifests_dir):
-                if filename.endswith(".item"):
-                    try:
-                        with open(os.path.join(epic_manifests_dir, filename), 'r', encoding='utf-8') as f:
-                            data = json.load(f)
-                            title = data.get('DisplayName', '')
-                            install_loc = data.get('InstallLocation', '')
-                            exe = data.get('LaunchExecutable', '')
-                            appid = data.get('AppName', '')
+            # ⚡ Bolt Optimization: Use os.scandir to reduce OS calls
+            with os.scandir(epic_manifests_dir) as it:
+                for entry in it:
+                    if entry.is_file() and entry.name.endswith(".item"):
+                        try:
+                            with open(entry.path, 'r', encoding='utf-8') as f:
+                                data = json.load(f)
+                                title = data.get('DisplayName', '')
+                                install_loc = data.get('InstallLocation', '')
+                                exe = data.get('LaunchExecutable', '')
+                                appid = data.get('AppName', '')
 
-                            if title and install_loc and exe:
-                                main_exe = os.path.join(install_loc, exe)
-                                if os.path.exists(main_exe):
-                                    exe_name = os.path.basename(main_exe)
-                                    icon_filename = f"epic_{appid}.ico"
-                                    icon_path_full = os.path.join(icons_dir, icon_filename)
+                                if title and install_loc and exe:
+                                    main_exe = os.path.join(install_loc, exe)
+                                    if os.path.exists(main_exe):
+                                        exe_name = os.path.basename(main_exe)
+                                        icon_filename = f"epic_{appid}.ico"
+                                        icon_path_full = os.path.join(icons_dir, icon_filename)
 
-                                    if IconExtractor and not os.path.exists(icon_path_full):
-                                        try:
-                                            extractor = IconExtractor(main_exe)
-                                            extractor.export_icon(icon_path_full)
-                                        except Exception:
-                                            pass
+                                        if IconExtractor and not os.path.exists(icon_path_full):
+                                            try:
+                                                extractor = IconExtractor(main_exe)
+                                                extractor.export_icon(icon_path_full)
+                                            except Exception:
+                                                pass
 
-                                    games.append({
-                                        "id": f"epic_{appid}",
-                                        "title": title,
-                                        "exe_path": main_exe,
-                                        "exe_name": exe_name,
-                                        "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
-                                        "profile": {
-                                            "high_priority": True,
-                                            "network_flush": True,
-                                            "power_plan": True,
-                                            "suspend_services": True,
-                                            "ram_purge": True
-                                        }
-                                    })
-                    except Exception:
-                        pass
+                                        games.append({
+                                            "id": f"epic_{appid}",
+                                            "title": title,
+                                            "exe_path": main_exe,
+                                            "exe_name": exe_name,
+                                            "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
+                                            "profile": {
+                                                "high_priority": True,
+                                                "network_flush": True,
+                                                "power_plan": True,
+                                                "suspend_services": True,
+                                                "ram_purge": True
+                                            }
+                                        })
+                        except Exception:
+                            pass
     except Exception:
         pass
 
