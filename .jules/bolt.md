@@ -32,3 +32,7 @@
 ## 2025-04-03 - Cache Dynamic System States in Polling Loops
 **Learning:** When optimizing continuous polling loops (like `while monitoring_active:`), placing dynamic system state calculations (such as fetching `current_process.children(recursive=True)` for whitelisting) inside the loop triggers expensive OS-level allocations on every iteration. However, strictly hoisting these calculations outside the loop can lead to stale cache regressions, as newly spawned child processes won't be captured.
 **Action:** Introduce a periodic cache refresh mechanism. Hoist dynamic data structures, but update them conditionally based on time (e.g., `if current_time - last_refresh > 60:`) rather than strictly keeping them static. This balances performance optimization with keeping dynamic system states accurate.
+
+## 2025-04-04 - Optimize Directory Scanning with os.scandir
+**Learning:** In the system cleaner, using `os.listdir()` to scan highly populated temp directories forces us to make extra OS-level stat calls (`os.path.isfile`, `os.path.getsize`) for every single item. This creates a severe I/O bottleneck. `os.scandir()` inherently caches these attributes on Windows and most Unix systems.
+**Action:** Replace `os.listdir()` followed by `os.path.*` calls with a single `os.scandir()` loop. This eliminates up to 3 redundant stat calls per file, dramatically speeding up directory traversal and file cleaning operations.
