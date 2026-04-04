@@ -614,14 +614,16 @@ def clean_system():
         if not t_dir or not os.path.exists(t_dir):
             continue
 
-        for item in os.listdir(t_dir):
-            item_path = os.path.join(t_dir, item)
+        # ⚡ Bolt Optimization: Use os.scandir instead of os.listdir to avoid O(N) extra os.stat calls
+        # when checking if an item is a file/directory or getting its size.
+        for entry in os.scandir(t_dir):
+            item_path = entry.path
             try:
-                if os.path.isfile(item_path):
-                    size = os.path.getsize(item_path)
+                if entry.is_file():
+                    size = entry.stat().st_size
                     os.unlink(item_path)
                     freed_space += size
-                elif os.path.isdir(item_path):
+                elif entry.is_dir():
                     # ⚡ Bolt Optimization: Use a single bottom-up traversal to calculate size
                     # and delete simultaneously.
                     dir_size = 0
@@ -1043,9 +1045,11 @@ def scan_games(force_refresh=False):
 
         steamapps_path = os.path.join(steam_path, "steamapps")
         if os.path.exists(steamapps_path):
-            for filename in os.listdir(steamapps_path):
-                if filename.endswith(".acf"):
-                    acf_path = os.path.join(steamapps_path, filename)
+            # ⚡ Bolt Optimization: Use os.scandir instead of os.listdir to avoid creating lists of strings
+            # and to allow faster string operations on entry names.
+            for entry in os.scandir(steamapps_path):
+                if entry.is_file() and entry.name.endswith(".acf"):
+                    acf_path = entry.path
                     try:
                         with open(acf_path, "r", encoding="utf-8") as f:
                             content = f.read()
@@ -1116,10 +1120,11 @@ def scan_games(force_refresh=False):
 
         if os.path.exists(epic_manifests_dir):
             import json
-            for filename in os.listdir(epic_manifests_dir):
-                if filename.endswith(".item"):
+            # ⚡ Bolt Optimization: Use os.scandir instead of os.listdir
+            for entry in os.scandir(epic_manifests_dir):
+                if entry.is_file() and entry.name.endswith(".item"):
                     try:
-                        with open(os.path.join(epic_manifests_dir, filename), 'r', encoding='utf-8') as f:
+                        with open(entry.path, 'r', encoding='utf-8') as f:
                             data = json.load(f)
                             title = data.get('DisplayName', '')
                             install_loc = data.get('InstallLocation', '')
