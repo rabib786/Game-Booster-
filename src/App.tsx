@@ -1094,10 +1094,11 @@ function App() {
                     type="text"
                     value={boostHotkey}
                     onChange={(e) => setBoostHotkey(e.target.value)}
+                    aria-describedby="boostHotkey-help"
                     className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-razer-green focus:outline-none transition-colors"
                     placeholder="e.g. alt+b"
                   />
-                  <p className="text-xs text-gray-500 mt-2">Trigger game boost optimizations instantly.</p>
+                  <p id="boostHotkey-help" className="text-xs text-gray-500 mt-2">Trigger game boost optimizations instantly.</p>
                 </div>
 
                 <div>
@@ -1107,10 +1108,11 @@ function App() {
                     type="text"
                     value={overlayHotkey}
                     onChange={(e) => setOverlayHotkey(e.target.value)}
+                    aria-describedby="overlayHotkey-help"
                     className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-razer-green focus:outline-none transition-colors"
                     placeholder="e.g. alt+o"
                   />
-                  <p className="text-xs text-gray-500 mt-2">Toggle the click-through telemetry overlay.</p>
+                  <p id="overlayHotkey-help" className="text-xs text-gray-500 mt-2">Toggle the click-through telemetry overlay.</p>
                 </div>
               </div>
 
