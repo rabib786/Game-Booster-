@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from './App';
 
@@ -132,7 +132,9 @@ describe('App', () => {
       expect(screen.getByText('Cleaning...')).toBeInTheDocument();
 
       // Fast-forward timers to resolve setTimeout
-      vi.runAllTimers();
+      act(() => {
+        vi.runAllTimers();
+      });
 
       await waitFor(() => {
         expect(screen.queryByText('Cleaning...')).not.toBeInTheDocument();
