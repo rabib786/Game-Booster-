@@ -32,3 +32,7 @@
 ## 2025-04-03 - Cache Dynamic System States in Polling Loops
 **Learning:** When optimizing continuous polling loops (like `while monitoring_active:`), placing dynamic system state calculations (such as fetching `current_process.children(recursive=True)` for whitelisting) inside the loop triggers expensive OS-level allocations on every iteration. However, strictly hoisting these calculations outside the loop can lead to stale cache regressions, as newly spawned child processes won't be captured.
 **Action:** Introduce a periodic cache refresh mechanism. Hoist dynamic data structures, but update them conditionally based on time (e.g., `if current_time - last_refresh > 60:`) rather than strictly keeping them static. This balances performance optimization with keeping dynamic system states accurate.
+
+## 2025-04-04 - Optimize Directory Traversal with os.scandir
+**Learning:** Using `os.listdir` followed by `os.path.isfile`, `os.path.isdir`, or `os.path.getsize` causes the OS to perform multiple expensive stat calls for each file. This severely impacts performance when cleaning large cache directories or scanning game libraries with hundreds of files.
+**Action:** Replace `os.listdir` with `os.scandir`. `os.scandir` yields `DirEntry` objects that cache attributes like file type and size on most operating systems, drastically reducing OS-level stat calls and improving file iteration speed.
