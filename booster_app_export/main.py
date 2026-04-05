@@ -690,7 +690,7 @@ def tweak_game_settings(game_name):
     tweaks_applied = []
 
     # We will simulate paths for Warzone and Cyberpunk 2077 based on standard UE4/custom engine patterns
-    if game_name.lower() == 'warzone':
+    if game_name.lower() in ('warzone', 'call of duty: warzone'):
         # Simulated path for Warzone
         config_path = os.path.join(os.environ.get('USERPROFILE', ''), 'Documents', 'Call of Duty Modern Warfare', 'players', 'adv_options.ini')
         if not os.path.exists(os.path.dirname(config_path)):
