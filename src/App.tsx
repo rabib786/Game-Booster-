@@ -402,14 +402,14 @@ function App() {
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
+      } finally {
+        setIsCleaning(false);
       }
-      setIsCleaning(false);
     } else {
       setTimeout(() => {
         addLog('[Web Preview] Cleaned 150.45 MB of Junk.');
         setIsCleaning(false);
       }, 1000);
-      return;
     }
   };
 
@@ -429,15 +429,15 @@ function App() {
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
+      } finally {
+        setIsOptimizing(false);
       }
     } else {
       setTimeout(() => {
         addLog('[Web Preview] Disabled 3 startup programs.');
         setIsOptimizing(false);
       }, 1000);
-      return;
     }
-    setIsOptimizing(false);
   };
 
   const handleBoost = async () => {
@@ -457,6 +457,8 @@ function App() {
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
+      } finally {
+        setIsBoosting(false);
       }
     } else {
       // Fallback for web preview mode if Eel is not available
@@ -466,10 +468,7 @@ function App() {
         addLog(`[Web Preview] Optimized: Process list items`);
         setIsBoosting(false);
       }, 1500);
-      return;
     }
-
-    setIsBoosting(false);
   };
 
   const toggleAutoBoost = () => setAutoBoost(!autoBoost);
@@ -570,6 +569,8 @@ function App() {
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
+      } finally {
+        setIsTweaking(false);
       }
     } else {
       setTimeout(() => {
@@ -577,9 +578,7 @@ function App() {
         addLog('Tweaks applied: Enabled DLSS, Disabled V-Sync');
         setIsTweaking(false);
       }, 1000);
-      return;
     }
-    setIsTweaking(false);
   };
 
   const handlePurgeRam = async () => {
@@ -595,15 +594,15 @@ function App() {
         }
       } catch (error) {
         addLog(`Failed to purge RAM: ${error}`, true);
+      } finally {
+        setIsPurging(false);
       }
     } else {
       setTimeout(() => {
         addLog('[Web Preview] Successfully purged system RAM.');
         setIsPurging(false);
       }, 1000);
-      return;
     }
-    setIsPurging(false);
   };
 
 
