@@ -50,6 +50,7 @@ class TestCleanSystem(unittest.TestCase):
         file_entry = MagicMock()
         file_entry.name = 'locked_file.txt'
         file_entry.path = 'C:\\Temp\\locked_file.txt'
+        file_entry.is_symlink.return_value = False
         file_entry.is_file.return_value = True
         file_entry.is_dir.return_value = False
         stat_mock = MagicMock()
@@ -59,6 +60,7 @@ class TestCleanSystem(unittest.TestCase):
         dir_entry = MagicMock()
         dir_entry.name = 'locked_dir'
         dir_entry.path = 'C:\\Temp\\locked_dir'
+        dir_entry.is_symlink.return_value = False
         dir_entry.is_file.return_value = False
         dir_entry.is_dir.return_value = True
 
@@ -71,12 +73,37 @@ class TestCleanSystem(unittest.TestCase):
         mock_walk.return_value = [('C:\\Temp\\locked_dir', ['subdir'], ['file_in_dir.txt'])]
         mock_rmdir.side_effect = OSError("Directory is locked")
 
+        # Create a mock file entry inside the directory
+        inner_file_entry = MagicMock()
+        inner_file_entry.name = 'file_in_dir.txt'
+        inner_file_entry.path = 'C:\\Temp\\locked_dir\\file_in_dir.txt'
+        inner_file_entry.is_symlink.return_value = False
+        inner_file_entry.is_file.return_value = True
+        inner_file_entry.is_dir.return_value = False
+        inner_stat_mock = MagicMock()
+        inner_stat_mock.st_size = 1024
+        inner_file_entry.stat.return_value = inner_stat_mock
+
+        # Configure scandir side_effect to return our mock entries
+        def scandir_side_effect(path):
+            mock_cm = MagicMock()
+            if path == 'C:\\Temp':
+                mock_cm.__enter__.return_value = [file_entry, dir_entry]
+            elif path == 'C:\\Temp\\locked_dir':
+                mock_cm.__enter__.return_value = [inner_file_entry]
+            else:
+                mock_cm.__enter__.return_value = []
+            return mock_cm
+        mock_scandir.side_effect = scandir_side_effect
+
         # Execute
         result = clean_system()
 
         # Assertions
         self.assertEqual(result['status'], 'success')
-        # Freed space should be 0.00 MB because both attempts to delete failed
+        # Freed space should be 0.00 MB because the top-level delete failed and inner deletes failed (unlink fails for all)
+        # Actually unlink only fails for locked_file.txt as configured? Wait, mock_unlink.side_effect = OSError, which applies to all calls.
+        # So inner_file_entry will also fail to unlink.
         self.assertIn("Cleaned 0.00 MB of Junk", result['message'])
 
         # Verify that unlink was called for the file and rmdir for the directory
@@ -100,6 +127,7 @@ class TestCleanSystem(unittest.TestCase):
         normal_entry = MagicMock()
         normal_entry.name = 'normal_file.txt'
         normal_entry.path = 'C:\\Temp\\normal_file.txt'
+        normal_entry.is_symlink.return_value = False
         normal_entry.is_file.return_value = True
         normal_entry.is_dir.return_value = False
         stat_mock1 = MagicMock()
@@ -109,13 +137,41 @@ class TestCleanSystem(unittest.TestCase):
         locked_entry = MagicMock()
         locked_entry.name = 'locked_file.txt'
         locked_entry.path = 'C:\\Temp\\locked_file.txt'
+        locked_entry.is_symlink.return_value = False
         locked_entry.is_file.return_value = True
         locked_entry.is_dir.return_value = False
         stat_mock2 = MagicMock()
         stat_mock2.st_size = 1024 * 1024 # 1MB
         locked_entry.stat.return_value = stat_mock2
 
-        mock_scandir.return_value.__enter__.return_value = [normal_entry, locked_entry]
+        # Let's add a normal directory to test directory traversal deletion
+        normal_dir_entry = MagicMock()
+        normal_dir_entry.name = 'normal_dir'
+        normal_dir_entry.path = 'C:\\Temp\\normal_dir'
+        normal_dir_entry.is_symlink.return_value = False
+        normal_dir_entry.is_file.return_value = False
+        normal_dir_entry.is_dir.return_value = True
+
+        inner_file = MagicMock()
+        inner_file.name = 'inner.txt'
+        inner_file.path = 'C:\\Temp\\normal_dir\\inner.txt'
+        inner_file.is_symlink.return_value = False
+        inner_file.is_file.return_value = True
+        inner_file.is_dir.return_value = False
+        inner_stat = MagicMock()
+        inner_stat.st_size = 1024 * 1024 * 4 # 4MB
+        inner_file.stat.return_value = inner_stat
+
+        def scandir_side_effect(path):
+            mock_cm = MagicMock()
+            if path == 'C:\\Temp':
+                mock_cm.__enter__.return_value = [normal_entry, locked_entry, normal_dir_entry]
+            elif path == 'C:\\Temp\\normal_dir':
+                mock_cm.__enter__.return_value = [inner_file]
+            else:
+                mock_cm.__enter__.return_value = []
+            return mock_cm
+        mock_scandir.side_effect = scandir_side_effect
 
         def unlink_side_effect(path):
             if 'locked_file.txt' in path:
@@ -128,8 +184,18 @@ class TestCleanSystem(unittest.TestCase):
 
         # Assertions
         self.assertEqual(result['status'], 'success')
-        # Freed space should be 1.00 MB (from normal_file.txt)
-        # 1MB / (1024*1024) = 1.0
+        # Freed space should be 1.00 MB (from normal_file.txt) + 4.00 MB (from inner.txt)
+        # Target dirs list length is 5, but 'C:\\Temp' is only added if environ get returns it.
+        # C:\Temp is evaluated 5 times for target_dirs array when environ mock returns C:\Temp for all!
+        # Wait, the 5 target dirs:
+        # TEMP, WINDIR\Temp, WINDIR\Prefetch, NVIDIA\DXCache, NVIDIA\GLCache
+        # If environ.get('TEMP') is 'C:\Temp' and 'WINDIR' is 'C:\Temp', then target_dirs becomes:
+        # ['C:\Temp', 'C:\Temp\Temp', 'C:\Temp\Prefetch', 'C:\Temp\NVIDIA\DXCache', 'C:\Temp\NVIDIA\GLCache']
+        # The mock exists is True for all.
+        # Top-level scandir uses the mocked entries, others will return []
+        # So only the first 'C:\Temp' has files, the rest are empty lists according to our mock side-effect.
+        # Wait, what if the paths exactly match 'C:\Temp'?
+        # 1.00 MB + 4.00 MB = 5.00 MB.
         self.assertIn("Cleaned 5.00 MB of Junk", result['message'])
 
 if __name__ == '__main__':
