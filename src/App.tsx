@@ -1148,13 +1148,13 @@ function App() {
       {/* Profile Configuration Modal */}
       {selectedGameProfile && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-panel-bg w-full max-w-md rounded-lg shadow-2xl border border-gray-800 flex flex-col overflow-hidden animate-fade-in">
+          <div role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" className="bg-panel-bg w-full max-w-md rounded-lg shadow-2xl border border-gray-800 flex flex-col overflow-hidden animate-fade-in">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-black">
-              <h2 className="text-white font-bold text-lg">{selectedGameProfile.title} Profile</h2>
+              <h2 id="profile-modal-title" className="text-white font-bold text-lg">{selectedGameProfile.title} Profile</h2>
               <button aria-label="Close Profile"
                 onClick={() => setSelectedGameProfile(null)}
-                className="text-gray-400 hover:text-white transition-colors p-1"
+                className="text-gray-400 hover:text-white transition-colors p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green"
               >
                 <X size={20} />
               </button>
@@ -1208,15 +1208,15 @@ function App() {
       {/* Session Summary Modal */}
       {sessionSummary && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-panel-bg w-full max-w-lg rounded-lg shadow-[0_0_30px_rgba(68,214,44,0.15)] border border-razer-green flex flex-col overflow-hidden relative">
+          <div role="dialog" aria-modal="true" aria-labelledby="summary-modal-title" className="bg-panel-bg w-full max-w-lg rounded-lg shadow-[0_0_30px_rgba(68,214,44,0.15)] border border-razer-green flex flex-col overflow-hidden relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-razer-green opacity-5 rounded-full blur-3xl transform translate-x-10 -translate-y-10"></div>
 
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-black relative z-10">
-              <h2 className="text-white font-bold text-lg flex items-center"><span className="text-razer-green mr-2">📊</span> Session Summary</h2>
+              <h2 id="summary-modal-title" className="text-white font-bold text-lg flex items-center"><span className="text-razer-green mr-2">📊</span> Session Summary</h2>
               <button aria-label="Close Summary"
                 onClick={() => setSessionSummary(null)}
-                className="text-gray-400 hover:text-white transition-colors p-1"
+                className="text-gray-400 hover:text-white transition-colors p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green"
               >
                 <X size={20} />
               </button>
