@@ -1310,6 +1310,9 @@ def launch_game(game_id, profile, exe_path, exe_name):
     except Exception as e:
         return {"status": "error", "message": f"Failed to launch game: {str(e)}"}
 
+_cached_whitelist_pids = set()
+_last_whitelist_refresh = 0
+
 @eel.expose
 def get_live_processes():
     """
@@ -1317,17 +1320,22 @@ def get_live_processes():
     Filters out critical Windows system processes and the app's own process tree.
     Returns JSON array with pid, name, memory_mb.
     """
+    global _cached_whitelist_pids, _last_whitelist_refresh
     processes = []
 
+    # ⚡ Bolt Optimization: Cache dynamic process tree state to prevent expensive OS-level allocations on every loop
     # Whitelist the current process and all its children (e.g., the browser spawned by eel)
-    whitelist_pids = set()
-    try:
-        current_process = psutil.Process()
-        whitelist_pids.add(current_process.pid)
-        for child in current_process.children(recursive=True):
-            whitelist_pids.add(child.pid)
-    except Exception:
-        pass
+    current_time = time.time()
+    if current_time - _last_whitelist_refresh > 60:
+        _cached_whitelist_pids.clear()
+        try:
+            current_process = psutil.Process()
+            _cached_whitelist_pids.add(current_process.pid)
+            for child in current_process.children(recursive=True):
+                _cached_whitelist_pids.add(child.pid)
+            _last_whitelist_refresh = current_time
+        except Exception:
+            pass
 
     # Critical Windows System Processes
     # ⚡ Bolt Optimization: Use O(1) set for faster lookups inside the loop
@@ -1338,7 +1346,8 @@ def get_live_processes():
         'conhost.exe', 'sihost.exe', 'ctfmon.exe', 'taskhostw.exe', 'alg.exe'
     ])
 
-    for proc in psutil.process_iter(['pid', 'name']):
+    # ⚡ Bolt Optimization: Pre-fetch memory_info with process_iter to avoid expensive attribute retrieval inside loop
+    for proc in psutil.process_iter(['pid', 'name', 'memory_info']):
         try:
             pid = proc.info.get('pid')
             name = proc.info.get('name')
@@ -1346,18 +1355,22 @@ def get_live_processes():
             if not pid or not name:
                 continue
 
-            if pid in whitelist_pids:
-                continue
-
-            if name.lower() in critical_processes_set:
+            if pid in _cached_whitelist_pids:
                 continue
 
             # Filter empty names or typical system names
             if not name.strip():
                 continue
 
-            # Fetch memory usage
-            mem_mb = proc.memory_info().rss / (1024 * 1024)
+            if name.lower() in critical_processes_set:
+                continue
+
+            # Fetch memory usage from pre-fetched info
+            mem_info = proc.info.get('memory_info')
+            if mem_info:
+                mem_mb = mem_info.rss / (1024 * 1024)
+            else:
+                mem_mb = 0
 
             processes.append({
                 "pid": pid,
