@@ -614,45 +614,60 @@ def clean_system():
         if not t_dir or not os.path.exists(t_dir):
             continue
 
-        # ⚡ Bolt Optimization: Replace os.listdir + stat calls with os.scandir to eliminate redundant system calls
+        # ⚡ Bolt Optimization: Fully replace os.walk with recursive os.scandir to eliminate redundant system calls
         # and improve directory scanning speed.
-        with os.scandir(t_dir) as it:
-            for entry in it:
-                item_path = entry.path
-                try:
-                    if entry.is_file():
-                        size = entry.stat().st_size
-                        os.unlink(item_path)
-                        freed_space += size
-                    elif entry.is_dir():
-                        # ⚡ Bolt Optimization: Use a single bottom-up traversal to calculate size
-                        # and delete simultaneously.
-                        dir_size = 0
-                        for dirpath, dirnames, filenames in os.walk(item_path, topdown=False):
-                            for f in filenames:
-                                fp = os.path.join(dirpath, f)
-                                try:
-                                    if not os.path.islink(fp):
-                                        f_size = os.path.getsize(fp)
-                                        os.unlink(fp)
-                                        dir_size += f_size
-                                    else:
-                                        os.unlink(fp)
-                                except Exception:
-                                    pass
-                            for d in dirnames:
-                                dp = os.path.join(dirpath, d)
-                                try:
-                                    os.rmdir(dp)
-                                except Exception:
-                                    pass
+        def _delete_dir_recursive(path):
+            dir_size = 0
+            subdirs = []
+            try:
+                with os.scandir(path) as it:
+                    for entry in it:
                         try:
-                            os.rmdir(item_path)
+                            if entry.is_symlink():
+                                os.unlink(entry.path)
+                            elif entry.is_file():
+                                f_size = entry.stat().st_size
+                                os.unlink(entry.path)
+                                dir_size += f_size
+                            elif entry.is_dir():
+                                subdirs.append(entry.path)
                         except Exception:
                             pass
-                        freed_space += dir_size
+
+                # Recurse after closing the scandir iterator to prevent file descriptor exhaustion
+                for subdir in subdirs:
+                    dir_size += _delete_dir_recursive(subdir)
+
+                try:
+                    os.rmdir(path)
                 except Exception:
                     pass
+            except Exception:
+                pass
+            return dir_size
+
+        try:
+            subdirs_root = []
+            with os.scandir(t_dir) as it:
+                for entry in it:
+                    item_path = entry.path
+                    try:
+                        if entry.is_symlink():
+                            os.unlink(item_path)
+                        elif entry.is_file():
+                            size = entry.stat().st_size
+                            os.unlink(item_path)
+                            freed_space += size
+                        elif entry.is_dir():
+                            subdirs_root.append(item_path)
+                    except Exception:
+                        pass
+
+            # Recurse after closing the root scandir iterator
+            for subdir in subdirs_root:
+                freed_space += _delete_dir_recursive(subdir)
+        except Exception:
+            pass
 
     return {
         "status": "success",
