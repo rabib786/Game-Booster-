@@ -1,7 +1,6 @@
-## 2025-03-09 - File descriptor exhaustion with recursive os.scandir
-**Learning:** When implementing a recursive directory traversal optimization using `os.scandir()`, you must not recurse from within the `with os.scandir(path) as it:` block. Doing so keeps the internal file descriptor open for every directory level deep. In deeply nested structures, this will crash the program with an `OSError: [Errno 24] Too many open files`.
-**Action:** Collect subdirectories into a list during the iteration, exit the `with` block to let `os.scandir()` close its handle, and *then* iterate through the list to recurse into subdirectories.
+## 2024-04-06 - Implement Profile & Config Logic
 
-## 2025-03-09 - Caching dynamic process tree state and bulk-fetching attributes
-**Learning:** Calling `current_process.children(recursive=True)` and native `proc.memory_info()` on every iteration in a loop that filters process metrics causes heavy OS-level allocations and slows down the loop.
-**Action:** Extract dynamic system state checking (like whitelisting process trees) behind a cached expiration timer (e.g. 60 seconds) so that the slow operation is not run on every continuous polling loop. Further, pre-fetch OS metrics using `psutil.process_iter(['pid', 'name', 'memory_info'])` which gathers process attributes in a single pass directly returning a cached dict, rather than initiating separate attribute lookups down the loop.
+- Created a persistent JSON config file to manage boost profiles (Aggressive, Conservative, Custom).
+- Added backend tracking for killed processes using `subprocess.Popen` arguments to enable restart via undo boost functionality.
+- Converted repetitive array loops for `liveProcesses` cross-referencing into O(1) set operations when checking whitelist inclusion before kills.
+- Stored full executable paths when killing processes to reliably support reversing targeted kills.

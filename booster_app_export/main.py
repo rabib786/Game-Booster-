@@ -1,4 +1,6 @@
 import sys
+import json
+import subprocess
 import re
 
 try:
@@ -61,6 +63,78 @@ suspended_services_list = []
 # --- Performance Overlay ---
 overlay_active = False
 overlay_window = None
+
+
+# --- Configuration & Profiles ---
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+
+def load_config():
+    if not os.path.exists(CONFIG_FILE):
+        return {
+            "boost_profiles": {
+                "Aggressive": ["spotify.exe", "discord.exe", "chrome.exe", "msedge.exe", "slack.exe", "teams.exe", "steamwebhelper.exe", "epicgameslauncher.exe", "onedrive.exe"],
+                "Conservative": [],
+                "Custom": []
+            },
+            "user_preferences": {}
+        }
+    with open(CONFIG_FILE, 'r') as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return {
+                "boost_profiles": {
+                    "Aggressive": ["spotify.exe", "discord.exe", "chrome.exe", "msedge.exe", "slack.exe", "teams.exe"],
+                    "Conservative": [],
+                    "Custom": []
+                },
+                "user_preferences": {}
+            }
+
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+
+@eel.expose
+def get_boost_profiles():
+    config = load_config()
+    return config.get("boost_profiles", {})
+
+@eel.expose
+def save_custom_profile(app_names):
+    config = load_config()
+    config.setdefault("boost_profiles", {})["Custom"] = app_names
+    save_config(config)
+    return {"status": "success", "message": "Custom profile saved."}
+
+# Track killed processes for undo functionality
+killed_processes_history = []
+
+@eel.expose
+def undo_boost():
+    global killed_processes_history
+    if not killed_processes_history:
+        return {"status": "error", "message": "No applications to restart."}
+
+    restarted = []
+    failed = []
+
+    for path in killed_processes_history:
+        if os.path.exists(path):
+            try:
+                subprocess.Popen([path], cwd=os.path.dirname(path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+                restarted.append(os.path.basename(path))
+            except Exception as e:
+                failed.append(os.path.basename(path))
+
+    killed_processes_history.clear()
+
+    message = f"Restarted {len(restarted)} applications."
+    if failed:
+        message += f" Failed to restart {len(failed)}."
+
+    return {"status": "success", "message": message, "details": f"Restarted: {', '.join(restarted)}"}
+
 
 def overlay_thread_func():
     global overlay_window, overlay_active
@@ -546,13 +620,21 @@ def purge_ram():
         return {"status": "error", "message": f"Failed to purge RAM: {str(e)}"}
 
 @eel.expose
-def boost_game(pids_to_kill=None):
+@eel.expose
+def boost_game(pids_to_kill=None, profile_name=None):
     """
     Loops through running processes and safely kills selected
     background applications (or hardcoded ones if None provided) to free up RAM and CPU.
     """
     # ⚡ Bolt Optimization: Convert list structures to O(1) sets before entering the loop
-    targets_set = set(['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
+    global killed_processes_history
+    config = load_config()
+    targets_list = config.get("boost_profiles", {}).get(profile_name, ['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
+    if profile_name == "Conservative" and pids_to_kill is None:
+        targets_list = [] # Only kill explicit selection
+
+    targets_set = set([t.lower() for t in targets_list])
+
     if pids_to_kill is not None:
         pids_to_kill = set(pids_to_kill)
 
@@ -580,6 +662,12 @@ def boost_game(pids_to_kill=None):
                 mem = proc.memory_info().rss / (1024 * 1024)
                 freed_memory += mem
                 closed_apps.append(name if name else str(pid))
+                try:
+                    exe_path = proc.exe()
+                    if exe_path and exe_path not in killed_processes_history:
+                        killed_processes_history.append(exe_path)
+                except:
+                    pass
                 proc.kill()
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass

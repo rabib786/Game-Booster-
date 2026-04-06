@@ -1,12 +1,6 @@
-## YYYY-MM-DD - [Convert navigation `<a>` tags to `<button>`]
-**Learning:** Found an accessibility issue pattern where `<a>` tags without `href` were used for app navigation tabs, breaking keyboard accessibility as they aren't naturally focusable via the `Tab` key.
-**Action:** Replaced these `<a>` tags with `<button>` elements, ensuring they are keyboard-accessible (tab-focusable) and readable by screen readers. Added `aria-label` attributes to icon-only buttons for screen reader friendliness and `focus-visible` styles for better keyboard navigation visual feedback.
-## 2026-03-31 - [Accessible Toggles and Inputs]
-**Learning:** Found an accessibility anti-pattern where custom toggle switches were built using `<div>` elements with `onClick` handlers, making them inaccessible via keyboard and unreadable by screen readers. Also found form inputs without explicit `id` and `htmlFor` associations.
-**Action:** Converted `<div>` toggles into semantic `<button role="switch">` elements, dynamically setting `aria-checked` attributes and applying `focus-visible` utility classes for clear keyboard focus indicators. Ensure all interactive inputs have properly associated labels via `id` and `htmlFor` attributes to improve both screen reader accessibility and the hit area for clicks.
-## 2025-05-18 - [Accessible Interactive Lists]
-**Learning:** Found an accessibility issue where lists of selectable items (like processes) were built using `<div>` elements with `onClick` handlers. This makes them invisible to keyboard navigation (cannot be focused via Tab) and prevents screen readers from understanding their selectable state.
-**Action:** Convert clickable `<div>` list items into semantic `<button>` elements. Ensure they have appropriate ARIA roles (e.g., `role="checkbox"` for multi-select lists), an `aria-checked` attribute to communicate state, and `focus-visible` utility classes to clearly indicate keyboard focus. Maintain styling using utility classes like `w-full text-left`.
-## 2024-05-15 - [Interactive Hover Overlays Accessibility]
-**Learning:** Hover overlays that rely solely on `group-hover:opacity-100` hide their interactable child elements from keyboard users, as tab-focusing into them doesn't trigger the hover state, keeping them invisible while focused.
-**Action:** When creating container overlays with hidden interactable children, add the `focus-within:opacity-100` utility class alongside hover states so that the overlay becomes visible when a user tabs into any element inside it. Always pair this with `focus-visible` ring styles on the actual buttons for clear focus indication.
+## 2024-04-06 - Implement Kill Confirmation Modal & Profile Switcher
+
+- Added a confirmation modal overlay (`showConfirmDialog`) to preview selected processes and estimated RAM savings before terminating apps.
+- Integrated semantic ARIA tags (`role="dialog"`, `aria-modal="true"`, `aria-labelledby`) to ensure standard compliance for modal dialogs.
+- Included warning indicators for sensitive background tasks (e.g. `explorer.exe`).
+- Implemented a select dropdown for `boostProfile` to rapidly load process kill-lists directly into selection states.
