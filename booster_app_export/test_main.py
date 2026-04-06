@@ -392,3 +392,57 @@ def test_get_prime_games(mock_scan):
     assert "Warzone" in titles
     assert "Call of Duty: Warzone" in titles
     assert "Other Game" not in titles
+
+
+@patch('subprocess.Popen')
+def test_suspend_services_success(mock_popen):
+    mock_process_success = MagicMock()
+    mock_process_success.returncode = 0
+    mock_process_success.communicate.return_value = ('SUCCESS', '')
+
+    mock_process_1062 = MagicMock()
+    mock_process_1062.returncode = 1
+    mock_process_1062.communicate.return_value = ('error 1062', '')
+
+    mock_popen.side_effect = [
+        mock_process_success, # Spooler
+        mock_process_1062,    # TabletInputService
+        mock_process_success, # SysMain
+        mock_process_success  # DiagTrack
+    ]
+
+    main.suspended_services_list = []
+
+    result = main.suspend_services()
+
+    assert result['status'] == 'success'
+    assert 'Suspended 3 non-essential services.' in result['message']
+    assert 'Spooler' in result['details']
+    assert 'TabletInputService' not in result['details']
+    assert 'SysMain' in result['details']
+    assert 'DiagTrack' in result['details']
+    assert main.suspended_services_list == ['Spooler', 'SysMain', 'DiagTrack']
+
+@patch('subprocess.Popen')
+def test_suspend_services_exception(mock_popen):
+    mock_process_success = MagicMock()
+    mock_process_success.returncode = 0
+    mock_process_success.communicate.return_value = ('SUCCESS', '')
+
+    mock_process_error = MagicMock()
+    mock_process_error.communicate.side_effect = Exception("Test Exception")
+
+    mock_popen.side_effect = [
+        Exception("Popen Exception"), # Spooler
+        mock_process_success,         # TabletInputService
+        mock_process_error,           # SysMain
+        mock_process_success          # DiagTrack
+    ]
+
+    main.suspended_services_list = []
+
+    result = main.suspend_services()
+
+    assert result['status'] == 'success'
+    assert 'Suspended 2 non-essential services.' in result['message']
+    assert main.suspended_services_list == ['TabletInputService', 'DiagTrack']
