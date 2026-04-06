@@ -104,7 +104,7 @@ class TestCleanSystem(unittest.TestCase):
         # Freed space should be 0.00 MB because the top-level delete failed and inner deletes failed (unlink fails for all)
         # Actually unlink only fails for locked_file.txt as configured? Wait, mock_unlink.side_effect = OSError, which applies to all calls.
         # So inner_file_entry will also fail to unlink.
-        self.assertIn("Cleaned 0.00 MB of Junk", result['message'])
+        self.assertIn("Cleaned 0.00 MB of Temp Junk", result['message'])
 
         # Verify that unlink was called for the file and rmdir for the directory
         mock_unlink.assert_called()
@@ -196,7 +196,7 @@ class TestCleanSystem(unittest.TestCase):
         # So only the first 'C:\Temp' has files, the rest are empty lists according to our mock side-effect.
         # Wait, what if the paths exactly match 'C:\Temp'?
         # 1.00 MB + 4.00 MB = 5.00 MB.
-        self.assertIn("Cleaned 5.00 MB of Junk", result['message'])
+        self.assertIn("Cleaned 5.00 MB of Temp Junk", result['message'])
 
 if __name__ == '__main__':
     unittest.main()

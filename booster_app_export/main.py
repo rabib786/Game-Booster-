@@ -68,7 +68,11 @@ overlay_window = None
 # --- Configuration & Profiles ---
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 
+# Track system tray state
+tray_active = True
+
 def load_config():
+    global tray_active
     if not os.path.exists(CONFIG_FILE):
         return {
             "boost_profiles": {
@@ -76,11 +80,16 @@ def load_config():
                 "Conservative": [],
                 "Custom": []
             },
-            "user_preferences": {}
+            "user_preferences": {
+                "tray_active": True
+            }
         }
     with open(CONFIG_FILE, 'r') as f:
         try:
-            return json.load(f)
+            data = json.load(f)
+            prefs = data.get("user_preferences", {})
+            tray_active = prefs.get("tray_active", True)
+            return data
         except json.JSONDecodeError:
             return {
                 "boost_profiles": {
@@ -88,7 +97,9 @@ def load_config():
                     "Conservative": [],
                     "Custom": []
                 },
-                "user_preferences": {}
+                "user_preferences": {
+                    "tray_active": True
+                }
             }
 
 def save_config(config):
@@ -777,7 +788,51 @@ def clean_system():
 
     return {
         "status": "success",
-        "message": f"Cleaned {freed_space / (1024 * 1024):.2f} MB of Junk."
+        "message": f"Cleaned {freed_space / (1024 * 1024):.2f} MB of Temp Junk."
+    }
+
+@eel.expose
+def full_system_clean(include_shaders: bool = False):
+    """
+    Performs a system clean, optionally including shader caches.
+    """
+    total_freed_mb = 0.0
+    details = []
+
+    res_sys = clean_system()
+    if res_sys.get('status') == 'success':
+        try:
+            msg = res_sys.get('message', '')
+            import re
+            match = re.search(r'([\d.]+)\s*MB', msg)
+            if match:
+                sys_mb = float(match.group(1))
+                total_freed_mb += sys_mb
+                details.append(f"System Temp: {sys_mb:.2f} MB")
+        except:
+            pass
+
+    if include_shaders:
+        res_shaders = clean_shader_caches()
+        if res_shaders.get('status') == 'success':
+            try:
+                msg = res_shaders.get('message', '')
+                import re
+                match = re.search(r'([\d.]+)\s*MB', msg)
+                if match:
+                    shader_mb = float(match.group(1))
+                    total_freed_mb += shader_mb
+
+                shader_details = res_shaders.get('details', '')
+                if shader_details and shader_details != "No matching caches found.":
+                    details.append(shader_details)
+            except:
+                pass
+
+    return {
+        "status": "success",
+        "message": f"Cleaned {total_freed_mb:.2f} MB total.",
+        "details": " | ".join(details) if details else "No junk found."
     }
 
 
@@ -940,45 +995,87 @@ def flush_dns_and_reset():
 # System Tray Variables
 tray_icon = None
 
+@eel.expose
+def toggle_tray_mode(enable: bool):
+    global tray_active
+    tray_active = enable
+    config = load_config()
+    config.setdefault("user_preferences", {})["tray_active"] = enable
+    save_config(config)
+    return {"status": "success", "message": f"Tray mode {'enabled' if enable else 'disabled'}."}
+
+@eel.expose
+def is_tray_active():
+    global tray_active
+    load_config()
+    return tray_active
+
 def create_image():
-    # Generate an image and draw a simple pattern for the system tray icon
+    if Image is None or ImageDraw is None:
+        return None
     image = Image.new('RGB', (64, 64), color=(0, 0, 0))
     d = ImageDraw.Draw(image)
-    d.rectangle((16, 16, 48, 48), fill=(0, 255, 0))
+    razer_green = (68, 214, 44)
+    d.rectangle((4, 4, 60, 60), outline=razer_green, width=4)
+    d.polygon([(32, 12), (16, 36), (32, 36), (28, 52), (48, 28), (32, 28)], fill=razer_green)
     return image
 
 def setup_tray():
     global tray_icon
-    def on_show(icon, item):
+    if pystray is None or item is None:
+        print("pystray not available, tray integration disabled.")
+        return
+
+    def on_show(icon, tray_item):
         try:
             hwnd = ctypes.windll.user32.GetForegroundWindow()
             ctypes.windll.user32.ShowWindow(hwnd, 5) # SW_SHOW
             icon.stop()
-        except Exception:
+        except Exception as e:
             pass
 
-    def on_quit(icon, item):
-        icon.stop()
-        sys.exit(0)
+    def on_quick_boost(icon, tray_item):
+        try:
+            res = boost_game()
+        except Exception as e:
+            pass
 
-    menu = (item('Open Dashboard', on_show, default=True), item('Exit', on_quit))
-    tray_icon = pystray.Icon("Booster", create_image(), "Nexus Booster", menu)
-    tray_icon.run()
+    def on_quit(icon, tray_item):
+        icon.stop()
+        exit_handler()
+        os._exit(0)
+
+    try:
+        menu = pystray.Menu(
+            item('Open Dashboard', on_show, default=True),
+            item('Quick Boost', on_quick_boost),
+            pystray.Menu.SEPARATOR,
+            item('Exit', on_quit)
+        )
+        img = create_image()
+        if img:
+            tray_icon = pystray.Icon("Booster", img, "Nexus Booster", menu)
+            tray_icon.run()
+    except Exception as e:
+        pass
 
 @eel.expose
 def close_window():
     """
     Minimizes the application to the system tray instead of exiting immediately.
     """
+    global tray_active
     try:
-        hwnd = ctypes.windll.user32.GetForegroundWindow()
-        # SW_HIDE = 0
-        ctypes.windll.user32.ShowWindow(hwnd, 0)
-
-        # Start tray in a background thread
-        threading.Thread(target=setup_tray, daemon=True).start()
+        if tray_active:
+            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            ctypes.windll.user32.ShowWindow(hwnd, 0)
+            threading.Thread(target=setup_tray, daemon=True).start()
+        else:
+            exit_handler()
+            os._exit(0)
     except Exception:
-        sys.exit(0)
+        exit_handler()
+        os._exit(0)
 
 @eel.expose
 def minimize_window():
