@@ -451,15 +451,24 @@ def suspend_services():
     global suspended_services_list
     services_to_suspend = ['Spooler', 'TabletInputService', 'SysMain', 'DiagTrack']
     suspended = []
+    processes = []
 
+    # ⚡ Bolt Optimization: Batch system calls using subprocess.Popen instead of sequential subprocess.run
+    # to significantly reduce main thread blocking time.
     for service in services_to_suspend:
         try:
             # CREATE_NO_WINDOW is 0x08000000
-            result = subprocess.run(['sc', 'stop', service], capture_output=True, text=True, creationflags=0x08000000)
-            # sc stop returns 0 on success, or output contains FAILED
-            if result.returncode == 0 or 'SUCCESS' in result.stdout:
+            p = subprocess.Popen(['sc', 'stop', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
+            processes.append((service, p))
+        except Exception:
+            pass
+
+    for service, p in processes:
+        try:
+            stdout, _ = p.communicate()
+            if p.returncode == 0 or 'SUCCESS' in stdout:
                 suspended.append(service)
-            elif '1062' in result.stdout:
+            elif '1062' in stdout:
                 # 1062 means service has not been started, which is fine
                 pass
         except Exception:
@@ -476,11 +485,20 @@ def suspend_services():
 def restore_services():
     global suspended_services_list
     restored = []
+    processes = []
 
+    # ⚡ Bolt Optimization: Batch system calls using subprocess.Popen
     for service in suspended_services_list:
         try:
-            result = subprocess.run(['sc', 'start', service], capture_output=True, text=True, creationflags=0x08000000)
-            if result.returncode == 0 or 'SUCCESS' in result.stdout:
+            p = subprocess.Popen(['sc', 'start', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
+            processes.append((service, p))
+        except Exception:
+            pass
+
+    for service, p in processes:
+        try:
+            stdout, _ = p.communicate()
+            if p.returncode == 0 or 'SUCCESS' in stdout:
                 restored.append(service)
         except Exception:
             pass
@@ -1090,12 +1108,13 @@ def scan_games(force_refresh=False):
                                     # Recursive scan using os.scandir to avoid os.walk + os.path.getsize overhead
                                     def _scan_for_exe(d_path):
                                         nonlocal main_exe, max_size
+                                        subdirs = []
                                         try:
                                             with os.scandir(d_path) as exe_it:
                                                 for exe_entry in exe_it:
                                                     try:
                                                         if exe_entry.is_dir(follow_symlinks=False):
-                                                            _scan_for_exe(exe_entry.path)
+                                                            subdirs.append(exe_entry.path)
                                                         elif exe_entry.name.lower().endswith(".exe"):
                                                             # Cache the stat result implicitly provided by os.scandir
                                                             size = exe_entry.stat(follow_symlinks=False).st_size
@@ -1106,6 +1125,9 @@ def scan_games(force_refresh=False):
                                                         pass
                                         except Exception:
                                             pass
+
+                                        for subdir in subdirs:
+                                            _scan_for_exe(subdir)
 
                                     _scan_for_exe(game_dir)
 
