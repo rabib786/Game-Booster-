@@ -834,10 +834,11 @@ function App() {
   // Wraps the massive process list mapping in useMemo so it doesn't re-render
   // on unrelated state changes (like telemetry ticks or keystrokes).
   // Also converts the O(N) array .includes() lookup into an O(1) Set.has() lookup.
+  const selectedPidsSet = useMemo(() => new Set(selectedPids), [selectedPids]);
+
   const memoizedProcesses = useMemo(() => {
-    const selectedSet = new Set(selectedPids);
     return liveProcesses.map((proc, idx) => {
-      const isSelected = selectedSet.has(proc.pid);
+      const isSelected = selectedPidsSet.has(proc.pid);
       return (
         <button
           key={proc.pid}
@@ -868,7 +869,15 @@ function App() {
         </button>
       );
     });
-  }, [liveProcesses, selectedPids]);
+  }, [liveProcesses, selectedPidsSet]);
+
+  const selectedProcesses = useMemo(() => {
+    return liveProcesses.filter(p => selectedPidsSet.has(p.pid));
+  }, [liveProcesses, selectedPidsSet]);
+
+  const memoryFreedGB = useMemo(() => {
+    return (selectedProcesses.reduce((sum, p) => sum + p.memory_mb, 0) / 1024).toFixed(2);
+  }, [selectedProcesses]);
 
   return (
     <div className="bg-dark-bg text-gray-300 font-sans h-screen overflow-hidden flex flex-col select-none">
@@ -908,12 +917,12 @@ function App() {
             </div>
 
             <p className="text-sm text-gray-400 mb-4">
-              You are about to terminate <strong className="text-white">{selectedPids.length}</strong> processes. This will free approximately <strong className="text-razer-green">{(liveProcesses.filter(p => selectedPids.includes(p.pid)).reduce((sum, p) => sum + p.memory_mb, 0) / 1024).toFixed(2)} GB</strong> of RAM.
+              You are about to terminate <strong className="text-white">{selectedPids.length}</strong> processes. This will free approximately <strong className="text-razer-green">{memoryFreedGB} GB</strong> of RAM.
             </p>
 
             <div className="bg-black border border-gray-800 rounded max-h-60 overflow-y-auto mb-6 custom-scrollbar p-2">
               <ul className="space-y-1">
-                {liveProcesses.filter(p => selectedPids.includes(p.pid)).map(p => {
+                {selectedProcesses.map(p => {
                   const isRisky = p.name.toLowerCase().includes('explorer.exe') || p.name.toLowerCase().includes('system');
                   return (
                     <li key={p.pid} className="flex justify-between text-xs p-2 hover:bg-gray-900 rounded">
