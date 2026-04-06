@@ -70,7 +70,6 @@ interface Eel {
   suspend_services: () => () => Promise<EelResponse>;
   restore_services: () => () => Promise<EelResponse>;
   purge_ram: () => () => Promise<EelResponse>;
-  boost_game: (pidsToKill?: number[]) => () => Promise<EelResponse>;
   clean_system: () => () => Promise<EelResponse>;
   tweak_game_settings: (gameName: string) => () => Promise<EelResponse>;
   optimize_startup: () => () => Promise<EelResponse>;
@@ -81,6 +80,10 @@ interface Eel {
   scan_games: (forceRefresh?: boolean) => () => Promise<Game[]>;
   launch_game: (gameId: string, profile: GameProfile, exePath: string, exeName: string) => () => Promise<EelResponse>;
   get_live_processes: () => () => Promise<ProcessInfo[]>;
+  get_boost_profiles: () => () => Promise<Record<string, string[]>>;
+  save_custom_profile: (appNames: string[]) => () => Promise<EelResponse>;
+  undo_boost: () => () => Promise<EelResponse>;
+  boost_game: (pidsToKill?: number[], profileName?: string) => () => Promise<EelResponse>;
 }
 
 // Declare eel for TypeScript
@@ -177,6 +180,7 @@ const TelemetryDashboard = () => {
 function App() {
   const [logs, setLogs] = useState<string[]>(['> System ready...']);
   const [isBoosting, setIsBoosting] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [currentTab, setCurrentTab] = useState<'Library' | 'Boost Tab' | 'System Booster' | 'Booster Prime' | 'Settings'>('Library');
   const [boostHotkey, setBoostHotkey] = useState('alt+b');
   const [overlayHotkey, setOverlayHotkey] = useState('alt+o');
@@ -188,6 +192,23 @@ function App() {
   const [autoBoost, setAutoBoost] = useState(false);
   const [liveProcesses, setLiveProcesses] = useState<ProcessInfo[]>([]);
   const [selectedPids, setSelectedPids] = useState<number[]>([]);
+  const [boostProfile, setBoostProfile] = useState<'Aggressive' | 'Conservative' | 'Custom'>('Aggressive');
+  const [availableProfiles, setAvailableProfiles] = useState<Record<string, string[]>>({});
+  const [isUndoing, setIsUndoing] = useState(false);
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      if (window.eel && window.eel.get_boost_profiles) {
+        try {
+          const profiles = await window.eel.get_boost_profiles()();
+          setAvailableProfiles(profiles);
+        } catch (e) {
+          console.error('Failed to fetch profiles', e);
+        }
+      }
+    };
+    fetchProfiles();
+  }, []);
 
 
   const [selectedGameProfile, setSelectedGameProfile] = useState<Game | null>(null);
@@ -445,13 +466,36 @@ function App() {
     }
   };
 
-  const handleBoost = async () => {
+
+  useEffect(() => {
+    if (currentTab === 'Boost Tab' && liveProcesses.length > 0) {
+      if (boostProfile === 'Conservative') {
+        setSelectedPids([]);
+      } else if (boostProfile === 'Aggressive' || boostProfile === 'Custom') {
+        const targetNames = availableProfiles[boostProfile] || [];
+        const lowerTargetNames = targetNames.map(n => n.toLowerCase());
+        const pids = liveProcesses.filter(p => lowerTargetNames.includes(p.name.toLowerCase())).map(p => p.pid);
+        setSelectedPids(pids);
+      }
+    }
+  }, [boostProfile, liveProcesses, availableProfiles, currentTab]);
+
+  const initiateBoost = () => {
+    if (selectedPids.length > 0) {
+      setShowConfirmDialog(true);
+    } else {
+      handleBoostConfirmed();
+    }
+  };
+
+  const handleBoostConfirmed = async () => {
+    setShowConfirmDialog(false);
     setIsBoosting(true);
     addLog('Initiating Game Boost sequence...');
 
     if (window.eel) {
       try {
-        const result = await window.eel.boost_game(selectedPids)();
+        const result = await window.eel.boost_game(selectedPids, boostProfile)();
         if (result.status === 'success') {
           addLog(result.message);
           if (result.details) {
@@ -473,6 +517,32 @@ function App() {
         addLog(`[Web Preview] Optimized: Process list items`);
         setIsBoosting(false);
       }, 1500);
+    }
+  };
+
+
+  const handleUndoBoost = async () => {
+    setIsUndoing(true);
+    addLog('Attempting to restart terminated applications...');
+    if (window.eel && window.eel.undo_boost) {
+      try {
+        const result = await window.eel.undo_boost()();
+        if (result.status === 'success') {
+          addLog(result.message);
+          if (result.details) addLog(result.details);
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (e) {
+        addLog(`Failed to communicate: ${e}`, true);
+      } finally {
+        setIsUndoing(false);
+      }
+    } else {
+      setTimeout(() => {
+        addLog('[Web Preview] Restarted applications.');
+        setIsUndoing(false);
+      }, 1000);
     }
   };
 
@@ -749,6 +819,64 @@ function App() {
       {/* BEGIN: MainContent */}
 <main className="flex-1 overflow-y-auto p-8 custom-scrollbar" data-purpose="dashboard-content">
 
+      {/* Confirmation Modal */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="confirm-boost-title">
+          <div className="bg-[#111] border border-gray-700 rounded p-6 max-w-lg w-full shadow-2xl animate-fade-in">
+            <div className="flex justify-between items-center mb-4">
+              <h2 id="confirm-boost-title" className="text-xl font-bold text-white flex items-center space-x-2">
+                <span className="text-yellow-500">⚠️</span>
+                <span>Confirm Process Termination</span>
+              </h2>
+              <button
+                onClick={() => setShowConfirmDialog(false)}
+                className="text-gray-500 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green rounded p-1"
+                aria-label="Close dialog"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-400 mb-4">
+              You are about to terminate <strong className="text-white">{selectedPids.length}</strong> processes. This will free approximately <strong className="text-razer-green">{(liveProcesses.filter(p => selectedPids.includes(p.pid)).reduce((sum, p) => sum + p.memory_mb, 0) / 1024).toFixed(2)} GB</strong> of RAM.
+            </p>
+
+            <div className="bg-black border border-gray-800 rounded max-h-60 overflow-y-auto mb-6 custom-scrollbar p-2">
+              <ul className="space-y-1">
+                {liveProcesses.filter(p => selectedPids.includes(p.pid)).map(p => {
+                  const isRisky = p.name.toLowerCase().includes('explorer.exe') || p.name.toLowerCase().includes('system');
+                  return (
+                    <li key={p.pid} className="flex justify-between text-xs p-2 hover:bg-gray-900 rounded">
+                      <div className="flex items-center space-x-2">
+                        {isRisky ? <span className="text-red-500" title="Risky Process">⚠️</span> : <span className="text-gray-500">📄</span>}
+                        <span className={isRisky ? "text-red-400" : "text-gray-300"}>{p.name}</span>
+                      </div>
+                      <span className="text-gray-500">{p.memory_mb.toFixed(1)} MB</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setShowConfirmDialog(false)}
+                className="px-4 py-2 rounded text-sm font-bold text-gray-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBoostConfirmed}
+                className="bg-razer-green hover:bg-green-400 text-black font-black px-6 py-2 rounded text-sm uppercase tracking-wider transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 shadow-[0_0_10px_rgba(68,214,44,0.2)]"
+              >
+                Confirm Kill
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
         {currentTab === 'Library' && (
           <div className="animate-fade-in flex flex-col space-y-6">
             <div className="flex justify-between items-center mb-4">
@@ -856,7 +984,7 @@ function App() {
               </div>
             </button>
             <button
-              onClick={handleBoost}
+              onClick={initiateBoost}
               disabled={isBoosting}
               className={`bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isBoosting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
