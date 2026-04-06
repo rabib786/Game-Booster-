@@ -84,6 +84,10 @@ interface Eel {
   save_custom_profile: (appNames: string[]) => () => Promise<EelResponse>;
   undo_boost: () => () => Promise<EelResponse>;
   boost_game: (pidsToKill?: number[], profileName?: string) => () => Promise<EelResponse>;
+  is_tray_active: () => () => Promise<boolean>;
+  toggle_tray_mode: (enable: boolean) => () => Promise<EelResponse>;
+  clean_shader_caches: () => () => Promise<EelResponse>;
+  full_system_clean: (includeShaders: boolean) => () => Promise<EelResponse>;
 }
 
 // Declare eel for TypeScript
@@ -189,12 +193,32 @@ function App() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
+  const [trayMode, setTrayMode] = useState(false);
+  const [isTrayActive, setIsTrayActive] = useState(false);
+  const [includeShaders, setIncludeShaders] = useState(false);
+  const [cleanerStats, setCleanerStats] = useState<{freed: number, details: string} | null>(null);
+
   const [autoBoost, setAutoBoost] = useState(false);
   const [liveProcesses, setLiveProcesses] = useState<ProcessInfo[]>([]);
   const [selectedPids, setSelectedPids] = useState<number[]>([]);
   const [boostProfile, setBoostProfile] = useState<'Aggressive' | 'Conservative' | 'Custom'>('Aggressive');
   const [availableProfiles, setAvailableProfiles] = useState<Record<string, string[]>>({});
   const [isUndoing, setIsUndoing] = useState(false);
+
+  useEffect(() => {
+    const fetchTrayStatus = async () => {
+      if (window.eel && window.eel.is_tray_active) {
+        try {
+          const status = await window.eel.is_tray_active()();
+          setTrayMode(status);
+          setIsTrayActive(status);
+        } catch (e) {
+          console.error('Failed to fetch tray status', e);
+        }
+      }
+    };
+    fetchTrayStatus();
+  }, []);
 
   useEffect(() => {
     const fetchProfiles = async () => {
@@ -385,6 +409,32 @@ function App() {
   };
 
 
+  const handleToggleTrayMode = async () => {
+    const newMode = !trayMode;
+    setTrayMode(newMode);
+    addLog(`Setting tray mode to ${newMode ? 'Enabled' : 'Disabled'}...`);
+    if (window.eel && window.eel.toggle_tray_mode) {
+      try {
+        const response = await window.eel.toggle_tray_mode(newMode)();
+        if (response.status === 'success') {
+          setIsTrayActive(newMode);
+          addLog(response.message);
+        } else {
+          setTrayMode(!newMode); // revert on error
+          addLog(`Error: ${response.message}`, true);
+        }
+      } catch (error) {
+        setTrayMode(!newMode); // revert on error
+        addLog(`Error toggling tray mode: ${error}`, true);
+      }
+    } else {
+      setTimeout(() => {
+        setIsTrayActive(newMode);
+        addLog(`[Web Preview] Tray mode ${newMode ? 'enabled' : 'disabled'}.`);
+      }, 500);
+    }
+  };
+
   const handleToggleOverlay = async () => {
     addLog('Toggling performance overlay...');
     if (window.eel) {
@@ -417,12 +467,24 @@ function App() {
 
   const handleCleanSystem = async () => {
     setIsCleaning(true);
-    addLog('Initiating System Clean sequence...');
-    if (window.eel) {
+    setCleanerStats(null);
+    addLog(`Initiating System Clean sequence${includeShaders ? ' (including shaders)' : ''}...`);
+    if (window.eel && window.eel.full_system_clean) {
       try {
-        const result = await window.eel.clean_system()();
+        const result = await window.eel.full_system_clean(includeShaders)();
         if (result.status === 'success') {
           addLog(result.message);
+          if (result.details) {
+             addLog(`Details: ${result.details}`);
+          }
+
+          const match = result.message.match(/([\d.]+)\s*MB/);
+          if (match) {
+             setCleanerStats({
+                 freed: parseFloat(match[1]),
+                 details: result.details || ''
+             });
+          }
         } else {
           addLog(`Error: ${result.message}`, true);
         }
@@ -433,7 +495,15 @@ function App() {
       }
     } else {
       setTimeout(() => {
-        addLog('[Web Preview] Cleaned 150.45 MB of Junk.');
+        const amount = includeShaders ? 2500.45 : 150.45;
+        addLog(`[Web Preview] Cleaned ${amount} MB of Junk.`);
+        if (includeShaders) {
+            addLog(`[Web Preview] Details: NVIDIA DX: 2000 MB, Prefetch: 500 MB`);
+        }
+        setCleanerStats({
+            freed: amount,
+            details: includeShaders ? 'System Temp: 0.45 MB | NVIDIA DX: 2000 MB, Prefetch: 500 MB' : 'System Temp: 150.45 MB'
+        });
         setIsCleaning(false);
       }, 1000);
     }
@@ -1178,6 +1248,35 @@ function App() {
                   {isCleaning ? 'Cleaning...' : 'Clean Now'}
                 </button>
               </div>
+              <div className="mt-4 pt-4 border-t border-gray-800 flex items-center">
+                <button
+                  role="checkbox"
+                  aria-checked={includeShaders}
+                  onClick={() => setIncludeShaders(!includeShaders)}
+                  className="flex items-center space-x-3 text-sm text-gray-300 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                >
+                  <div className={`w-5 h-5 flex items-center justify-center border rounded ${includeShaders ? 'bg-blue-500 border-blue-500 text-black' : 'border-gray-600 bg-black'}`}>
+                    {includeShaders && <span>✓</span>}
+                  </div>
+                  <span>Include GPU Shader Caches & Windows Prefetch files</span>
+                </button>
+              </div>
+              {cleanerStats && (
+                <div className="mt-6 bg-blue-900/20 border border-blue-500/50 rounded p-4 animate-fade-in flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h4 className="text-blue-400 font-bold text-lg flex items-center">
+                            <span className="mr-2">✓</span> Clean Complete
+                        </h4>
+                        <p className="text-white text-2xl font-black mt-1">{cleanerStats.freed.toFixed(2)} MB <span className="text-sm font-normal text-gray-400 tracking-wide uppercase">Freed</span></p>
+                    </div>
+                    <div className="mt-4 md:mt-0 text-xs text-gray-400 max-w-sm text-right">
+                        <span className="font-bold text-gray-300 block mb-1">Details Breakdown:</span>
+                        {cleanerStats.details.split(' | ').map((d, i) => (
+                            <div key={i}>{d}</div>
+                        ))}
+                    </div>
+                </div>
+              )}
             </section>
 
             <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-purple-500 shadow-lg" data-purpose="startup-optimize-card">
@@ -1256,6 +1355,31 @@ function App() {
                   className={`bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isUpdatingHotkeys ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isUpdatingHotkeys ? 'Saving...' : 'Save Hotkeys'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-panel-bg p-6 rounded-sm border border-gray-800 space-y-6">
+              <h2 className="text-lg font-bold text-white mb-4">System Tray</h2>
+              <div className="flex items-center justify-between">
+                <div className="pr-4">
+                  <h3 className="text-gray-200 text-sm font-bold">Minimize to System Tray Instead of Closing</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {trayMode
+                      ? "App will minimize to tray when closed. Click tray icon to restore."
+                      : "App will exit when closed (normal behavior)."}
+                  </p>
+                </div>
+                <button
+                  onClick={handleToggleTrayMode}
+                  role="switch"
+                  aria-checked={trayMode}
+                  aria-label="Toggle System Tray Integration"
+                  className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none ${trayMode ? 'bg-razer-green' : 'bg-gray-600'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-black transition-transform ${trayMode ? 'translate-x-7' : 'translate-x-1'}`}
+                  />
                 </button>
               </div>
             </div>

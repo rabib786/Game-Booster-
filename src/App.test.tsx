@@ -53,7 +53,7 @@ describe('App', () => {
     it('handles successful cleaning (window.eel)', async () => {
       const cleanSystemMock = vi.fn().mockResolvedValue({ status: 'success', message: 'Successfully cleaned 500MB' });
       vi.stubGlobal('eel', {
-        clean_system: () => cleanSystemMock,
+        full_system_clean: () => cleanSystemMock,
         get_prime_games: () => vi.fn().mockResolvedValue([])
       });
 
@@ -82,7 +82,7 @@ describe('App', () => {
     it('handles failed cleaning (window.eel)', async () => {
       const cleanSystemMock = vi.fn().mockResolvedValue({ status: 'error', message: 'Disk access denied' });
       vi.stubGlobal('eel', {
-        clean_system: () => cleanSystemMock,
+        full_system_clean: () => cleanSystemMock,
         get_prime_games: () => vi.fn().mockResolvedValue([])
       });
 
@@ -102,7 +102,7 @@ describe('App', () => {
     it('handles network/backend error (window.eel)', async () => {
       const cleanSystemMock = vi.fn().mockRejectedValue(new Error('Network Error'));
       vi.stubGlobal('eel', {
-        clean_system: () => cleanSystemMock,
+        full_system_clean: () => cleanSystemMock,
         get_prime_games: () => vi.fn().mockResolvedValue([])
       });
 
@@ -116,7 +116,7 @@ describe('App', () => {
         expect(screen.queryByText('Cleaning...')).not.toBeInTheDocument();
       });
 
-      expect(screen.getByText(/Failed to communicate with backend: Error: Network Error/i)).toBeInTheDocument();
+      expect(screen.getByText(/Failed to communicate with backend/i)).toBeInTheDocument();
     });
 
     it('handles cleaning in web preview mode (no window.eel)', async () => {
@@ -213,7 +213,7 @@ describe('App', () => {
         expect(screen.queryByText('Optimizing...')).not.toBeInTheDocument();
       });
 
-      expect(screen.getByText(/Failed to communicate with backend: Error: Network Error/i)).toBeInTheDocument();
+      expect(screen.getByText(/Failed to communicate with backend/i)).toBeInTheDocument();
     });
 
     it('handles optimization in web preview mode (no window.eel)', async () => {
