@@ -145,4 +145,101 @@ describe('App', () => {
       vi.useRealTimers();
     });
   });
+
+  describe('handleOptimizeStartup', () => {
+    it('handles successful optimization (window.eel)', async () => {
+      const optimizeStartupMock = vi.fn().mockResolvedValue({ status: 'success', message: 'Startup optimized' });
+      vi.stubGlobal('eel', {
+        optimize_startup: () => optimizeStartupMock,
+        get_prime_games: () => vi.fn().mockResolvedValue([])
+      });
+
+      render(<App />);
+
+      // Navigate to Booster Prime tab
+      fireEvent.click(screen.getByText('Booster Prime'));
+
+      // Find and click Optimize Now button
+      const optimizeBtn = screen.getByText('Optimize Now');
+      fireEvent.click(optimizeBtn);
+
+      // Verify it enters optimizing state
+      expect(screen.getByText('Optimizing...')).toBeInTheDocument();
+      expect(optimizeBtn).toBeDisabled();
+
+      // Wait for it to finish
+      await waitFor(() => {
+        expect(screen.queryByText('Optimizing...')).not.toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Optimize Now')).not.toBeDisabled();
+      expect(screen.getByText(/Startup optimized/i)).toBeInTheDocument();
+    });
+
+    it('handles failed optimization (window.eel)', async () => {
+      const optimizeStartupMock = vi.fn().mockResolvedValue({ status: 'error', message: 'Access denied' });
+      vi.stubGlobal('eel', {
+        optimize_startup: () => optimizeStartupMock,
+        get_prime_games: () => vi.fn().mockResolvedValue([])
+      });
+
+      render(<App />);
+
+      fireEvent.click(screen.getByText('Booster Prime'));
+      const optimizeBtn = screen.getByText('Optimize Now');
+      fireEvent.click(optimizeBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Optimizing...')).not.toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/Error: Access denied/i)).toBeInTheDocument();
+    });
+
+    it('handles network/backend error (window.eel)', async () => {
+      const optimizeStartupMock = vi.fn().mockRejectedValue(new Error('Network Error'));
+      vi.stubGlobal('eel', {
+        optimize_startup: () => optimizeStartupMock,
+        get_prime_games: () => vi.fn().mockResolvedValue([])
+      });
+
+      render(<App />);
+
+      fireEvent.click(screen.getByText('Booster Prime'));
+      const optimizeBtn = screen.getByText('Optimize Now');
+      fireEvent.click(optimizeBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Optimizing...')).not.toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/Failed to communicate with backend: Error: Network Error/i)).toBeInTheDocument();
+    });
+
+    it('handles optimization in web preview mode (no window.eel)', async () => {
+      vi.stubGlobal('eel', undefined);
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+
+      render(<App />);
+
+      fireEvent.click(screen.getByText('Booster Prime'));
+      const optimizeBtn = screen.getByText('Optimize Now');
+      fireEvent.click(optimizeBtn);
+
+      expect(screen.getByText('Optimizing...')).toBeInTheDocument();
+
+      // Fast-forward timers to resolve setTimeout
+      act(() => {
+        vi.runAllTimers();
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByText('Optimizing...')).not.toBeInTheDocument();
+      }, { timeout: 2000 });
+
+      expect(screen.getByText(/\[Web Preview\] Disabled 3 startup programs./i)).toBeInTheDocument();
+
+      vi.useRealTimers();
+    });
+  });
 });
