@@ -197,6 +197,7 @@ function App() {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
   const [isTweaking, setIsTweaking] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<{fps: number, lows: number, ram: number} | null>(null);
   const [isServicesSuspended, setIsServicesSuspended] = useState(false);
   const [isPowerPlanHigh, setIsPowerPlanHigh] = useState(false);
@@ -312,6 +313,7 @@ function App() {
 
 
   const handleScanGames = async (forceRefresh = false) => {
+    setIsScanning(true);
     addLog('Scanning for installed games...');
     if (window.eel) {
       try {
@@ -320,6 +322,8 @@ function App() {
         addLog(`Found ${games.length} games.`);
       } catch (error) {
         addLog(`Error scanning games: ${error}`);
+      } finally {
+        setIsScanning(false);
       }
     } else {
       setTimeout(() => {
@@ -354,6 +358,7 @@ function App() {
           }
         ]);
         addLog('Found 2 mock games.');
+        setIsScanning(false);
       }, 500);
     }
   };
@@ -752,9 +757,10 @@ function App() {
               </h2>
               <button
                 onClick={() => handleScanGames(true)}
-                className="bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)]"
+                disabled={isScanning}
+                className={`bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                Scan Games
+                {isScanning ? 'Scanning...' : 'Scan Games'}
               </button>
             </div>
 
