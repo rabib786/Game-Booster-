@@ -200,12 +200,14 @@ function App() {
   const [cleanerStats, setCleanerStats] = useState<{freed: number, details: string} | null>(null);
 
   const [autoBoost, setAutoBoost] = useState(false);
+  const [boostMode, setBoostMode] = useState<'Esports' | 'AAA' | 'Streaming'>('Esports');
   const [liveProcesses, setLiveProcesses] = useState<ProcessInfo[]>([]);
   const [selectedPids, setSelectedPids] = useState<number[]>([]);
   const [boostProfile, setBoostProfile] = useState<'Aggressive' | 'Conservative' | 'Custom'>('Aggressive');
   const [availableProfiles, setAvailableProfiles] = useState<Record<string, string[]>>({});
   const [isUndoing, setIsUndoing] = useState(false);
   const [isSavingCustomProfile, setIsSavingCustomProfile] = useState(false);
+  const [isHyperBoosting, setIsHyperBoosting] = useState(false);
 
   useEffect(() => {
     const fetchTrayStatus = async () => {
@@ -560,14 +562,15 @@ function App() {
     }
   };
 
-  const handleBoostConfirmed = async () => {
-    setShowConfirmDialog(false);
+  const executeBoost = async (profileName: 'Aggressive' | 'Conservative' | 'Custom' = boostProfile, skipIntroLog = false) => {
     setIsBoosting(true);
-    addLog('Initiating Game Boost sequence...');
+    if (!skipIntroLog) {
+      addLog('Initiating Game Boost sequence...');
+    }
 
     if (isEelAvailable()) {
       try {
-        const result = await window.eel.boost_game(selectedPids, boostProfile)();
+        const result = await window.eel.boost_game(selectedPids, profileName)();
         if (result.status === 'success') {
           addLog(result.message);
           if (result.details) {
@@ -589,6 +592,45 @@ function App() {
         addLog(`[Web Preview] Optimized: Process list items`);
         setIsBoosting(false);
       }, 1500);
+    }
+  };
+
+  const handleBoostConfirmed = async () => {
+    setShowConfirmDialog(false);
+    await executeBoost();
+  };
+
+  const handleHyperBoost = async () => {
+    if (isHyperBoosting) return;
+
+    const modeToProfile: Record<'Esports' | 'AAA' | 'Streaming', 'Aggressive' | 'Conservative' | 'Custom'> = {
+      Esports: 'Aggressive',
+      AAA: 'Custom',
+      Streaming: 'Conservative'
+    };
+
+    setIsHyperBoosting(true);
+    addLog(`HyperBoost mode "${boostMode}" activated...`);
+    addLog('Running chained optimizations (power, network, RAM, process cleanup)...');
+    try {
+      if (!isPowerPlanHigh) {
+        await handleTogglePowerPlan();
+      }
+      await handleNetworkFlush();
+      if (boostMode !== 'Streaming') {
+        await handlePurgeRam();
+      } else {
+        addLog('Streaming mode keeps memory cache warmer for OBS/browser scenes.');
+      }
+      if (boostMode === 'AAA' && !isServicesSuspended) {
+        await handleToggleServices();
+      }
+      await executeBoost(modeToProfile[boostMode], true);
+      addLog(`HyperBoost "${boostMode}" sequence complete.`);
+    } catch (error) {
+      addLog(`HyperBoost failed: ${error}`, true);
+    } finally {
+      setIsHyperBoosting(false);
     }
   };
 
@@ -1160,6 +1202,34 @@ function App() {
           </div>
         </section>
         {/* END: OptimizationSummary */}
+
+        <section className="mb-10 bg-panel-bg p-6 rounded-sm border border-gray-800 shadow-lg">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h3 className="text-white text-lg font-bold">HyperBoost Modes</h3>
+              <p className="text-xs text-gray-400 mt-1">One-click chained optimization profiles inspired by premium game booster workflows.</p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <select
+                aria-label="HyperBoost mode"
+                value={boostMode}
+                onChange={(e) => setBoostMode(e.target.value as 'Esports' | 'AAA' | 'Streaming')}
+                className="bg-black border border-gray-700 text-white text-xs uppercase tracking-wider rounded px-3 py-2 focus:outline-none focus:border-razer-green"
+              >
+                <option value="Esports">Esports (Lowest Latency)</option>
+                <option value="AAA">AAA (Max Visual Stability)</option>
+                <option value="Streaming">Streaming (Balanced)</option>
+              </select>
+              <button
+                onClick={handleHyperBoost}
+                disabled={isHyperBoosting || isBoosting || isPurging || isFlushingNetwork}
+                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${(isHyperBoosting || isBoosting || isPurging || isFlushingNetwork) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isHyperBoosting ? <><Loader2 size={16} className="animate-spin" /><span>HyperBoosting...</span></> : <span>Run HyperBoost</span>}
+              </button>
+            </div>
+          </div>
+        </section>
 
         {/* BEGIN: Enhanced Tools Section */}
         <section className="mb-10 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
