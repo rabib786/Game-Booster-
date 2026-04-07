@@ -63,7 +63,7 @@ describe('App', () => {
       fireEvent.click(screen.getByText('Booster Prime'));
 
       // Find and click Clean Now button
-      const cleanBtn = screen.getByText('Clean Now');
+      const cleanBtn = screen.getByRole('button', { name: 'Clean Now' });
       fireEvent.click(cleanBtn);
 
       // Verify it enters cleaning state
@@ -89,7 +89,7 @@ describe('App', () => {
       render(<App />);
 
       fireEvent.click(screen.getByText('Booster Prime'));
-      const cleanBtn = screen.getByText('Clean Now');
+      const cleanBtn = screen.getByRole('button', { name: 'Clean Now' });
       fireEvent.click(cleanBtn);
 
       await waitFor(() => {
@@ -109,7 +109,7 @@ describe('App', () => {
       render(<App />);
 
       fireEvent.click(screen.getByText('Booster Prime'));
-      const cleanBtn = screen.getByText('Clean Now');
+      const cleanBtn = screen.getByRole('button', { name: 'Clean Now' });
       fireEvent.click(cleanBtn);
 
       await waitFor(() => {
@@ -160,7 +160,7 @@ describe('App', () => {
       fireEvent.click(screen.getByText('Booster Prime'));
 
       // Find and click Optimize Now button
-      const optimizeBtn = screen.getByText('Optimize Now');
+      const optimizeBtn = screen.getByRole('button', { name: 'Optimize Now' });
       fireEvent.click(optimizeBtn);
 
       // Verify it enters optimizing state
@@ -186,7 +186,7 @@ describe('App', () => {
       render(<App />);
 
       fireEvent.click(screen.getByText('Booster Prime'));
-      const optimizeBtn = screen.getByText('Optimize Now');
+      const optimizeBtn = screen.getByRole('button', { name: 'Optimize Now' });
       fireEvent.click(optimizeBtn);
 
       await waitFor(() => {
@@ -206,7 +206,7 @@ describe('App', () => {
       render(<App />);
 
       fireEvent.click(screen.getByText('Booster Prime'));
-      const optimizeBtn = screen.getByText('Optimize Now');
+      const optimizeBtn = screen.getByRole('button', { name: 'Optimize Now' });
       fireEvent.click(optimizeBtn);
 
       await waitFor(() => {
