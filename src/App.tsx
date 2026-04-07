@@ -5,6 +5,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Settings, Play, X, Loader2 } from 'lucide-react';
+import { callEel, isEelAvailable } from './api/eelClient';
 
 interface EelResponse {
   status: 'success' | 'error';
@@ -106,10 +107,10 @@ const TelemetryDashboard = React.memo(() => {
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (window.eel) {
+    if (isEelAvailable()) {
       interval = setInterval(async () => {
         try {
-          const tel = await window.eel.get_telemetry()();
+          const tel = await callEel<[], TelemetryData>('get_telemetry');
           setTelemetry(tel);
         } catch (e) {
           console.error(e);
@@ -208,9 +209,9 @@ function App() {
 
   useEffect(() => {
     const fetchTrayStatus = async () => {
-      if (window.eel && window.eel.is_tray_active) {
+      if (isEelAvailable()) {
         try {
-          const status = await window.eel.is_tray_active()();
+          const status = await callEel<[], boolean>('is_tray_active');
           setTrayMode(status);
           setIsTrayActive(status);
         } catch (e) {
@@ -223,9 +224,9 @@ function App() {
 
   useEffect(() => {
     const fetchProfiles = async () => {
-      if (window.eel && window.eel.get_boost_profiles) {
+      if (isEelAvailable()) {
         try {
-          const profiles = await window.eel.get_boost_profiles()();
+          const profiles = await callEel<[], Record<string, string[]>>('get_boost_profiles');
           setAvailableProfiles(profiles);
         } catch (e) {
           console.error('Failed to fetch profiles', e);
@@ -256,7 +257,7 @@ function App() {
   useEffect(() => {
     if (currentTab === 'Boost Tab') {
       const fetchProcesses = async () => {
-        if (window.eel) {
+        if (isEelAvailable()) {
           try {
             const procs = await window.eel.get_live_processes()();
             setLiveProcesses(procs);
@@ -291,7 +292,7 @@ function App() {
     if (currentTab === 'Booster Prime') {
       const fetchPrimeGames = async () => {
         // Fetch supported games dynamically from the Python backend
-        if (window.eel) {
+        if (isEelAvailable()) {
           try {
             const games = await window.eel.get_prime_games()();
             setPrimeGames(games);
@@ -336,7 +337,7 @@ function App() {
   const handleLaunchGame = async (game: Game) => {
     addLog(`Starting launch sequence for ${game.title}...`);
     try {
-      if (window.eel) {
+      if (isEelAvailable()) {
         const response = await window.eel.launch_game(game.id, game.profile, game.exe_path, game.exe_name)();
         if (response.status === 'success') {
           addLog(`Launch success: ${response.details}`);
@@ -361,7 +362,7 @@ function App() {
   const handleScanGames = async (forceRefresh = false) => {
     setIsScanning(true);
     addLog('Scanning for installed games...');
-    if (window.eel) {
+    if (isEelAvailable()) {
       try {
         const games = await window.eel.scan_games(forceRefresh)();
         setInstalledGames(games);
@@ -438,7 +439,7 @@ function App() {
 
   const handleToggleOverlay = async () => {
     addLog('Toggling performance overlay...');
-    if (window.eel) {
+    if (isEelAvailable()) {
       try {
         const response = await window.eel.toggle_overlay()();
         addLog(response.message);
@@ -513,7 +514,7 @@ function App() {
   const handleOptimizeStartup = async () => {
     setIsOptimizing(true);
     addLog('Initiating Startup Optimization sequence...');
-    if (window.eel) {
+    if (isEelAvailable()) {
       try {
         const result = await window.eel.optimize_startup()();
         if (result.status === 'success') {
@@ -564,7 +565,7 @@ function App() {
     setIsBoosting(true);
     addLog('Initiating Game Boost sequence...');
 
-    if (window.eel) {
+    if (isEelAvailable()) {
       try {
         const result = await window.eel.boost_game(selectedPids, boostProfile)();
         if (result.status === 'success') {
@@ -663,7 +664,7 @@ function App() {
     if (isMonitoring) {
       setIsMonitoring(false);
       addLog(`Stopped monitoring ${targetExe}. Reverting priority...`);
-      if (window.eel) {
+      if (isEelAvailable()) {
         try {
           await window.eel.stop_monitor()();
           const summaryData = await window.eel.get_session_summary()();
@@ -696,7 +697,7 @@ function App() {
       setIsMonitoring(true);
       setSessionSummary(null); // Clear previous summary
       addLog(`Started monitoring for ${targetExe}. Process priority will be elevated.`);
-      if (window.eel) {
+      if (isEelAvailable()) {
         try {
           const result = await window.eel.start_monitor(targetExe)();
           if (result.status === 'success') {
@@ -742,7 +743,7 @@ function App() {
   const handleTweakGame = async (gameName: string) => {
     setIsTweaking(true);
     addLog(`Applying Booster Prime settings for ${gameName}...`);
-    if (window.eel) {
+    if (isEelAvailable()) {
       try {
         const result = await window.eel.tweak_game_settings(gameName)();
         if (result.status === 'success') {
@@ -770,7 +771,7 @@ function App() {
   const handlePurgeRam = async () => {
     setIsPurging(true);
     addLog('Initiating RAM Purge sequence...');
-    if (window.eel) {
+    if (isEelAvailable()) {
       try {
         const result = await window.eel.purge_ram()();
         if (result.status === 'success') {
@@ -803,7 +804,7 @@ function App() {
     setIsPowerPlanHigh(!isPowerPlanHigh);
     addLog(`Initiating Power Plan switch to ${nextPlan}...`);
 
-    if (window.eel) {
+    if (isEelAvailable()) {
       try {
         const result = await window.eel.set_power_plan(nextPlan)();
         if (result.status === 'success') {
@@ -827,7 +828,7 @@ function App() {
   const handleUpdateHotkeys = async () => {
     setIsUpdatingHotkeys(true);
     addLog(`Updating hotkeys...`);
-    if (window.eel) {
+    if (isEelAvailable()) {
       try {
         const result = await window.eel.update_hotkeys(boostHotkey, overlayHotkey)();
         if (result.status === 'success') {
@@ -850,7 +851,7 @@ function App() {
     setIsFlushingNetwork(true);
     addLog('Initiating Network Flush sequence...');
 
-    if (window.eel) {
+    if (isEelAvailable()) {
       try {
         const result = await window.eel.flush_dns_and_reset()();
         if (result.status === 'success') {

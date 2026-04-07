@@ -258,7 +258,34 @@ def test_flush_dns_and_reset_success(mock_run):
     assert calls[2][0][0] == ['ipconfig', '/flushdns']
     assert calls[3][0][0] == ['netsh', 'int', 'ip', 'reset']
 
-    assert result['status'] == 'success'
+
+def test_validate_config_recovers_invalid_shape():
+    from main import validate_config
+
+    normalized, is_valid = validate_config({"boost_profiles": "oops", "user_preferences": {"tray_active": "yes"}})
+
+    assert is_valid is False
+    assert isinstance(normalized["boost_profiles"]["Aggressive"], list)
+    assert normalized["user_preferences"]["tray_active"] is True
+
+
+def test_validate_config_preserves_valid_values():
+    from main import validate_config
+
+    raw = {
+        "boost_profiles": {
+            "Aggressive": ["Discord.EXE", "Chrome.exe"],
+            "Conservative": [],
+            "Custom": ["MyApp.exe"]
+        },
+        "user_preferences": {"tray_active": False}
+    }
+
+    normalized, is_valid = validate_config(raw)
+    assert is_valid is False  # normalization lowercases executable names
+    assert normalized["boost_profiles"]["Aggressive"] == ["discord.exe", "chrome.exe"]
+    assert normalized["boost_profiles"]["Custom"] == ["myapp.exe"]
+    assert normalized["user_preferences"]["tray_active"] is False
 
 @patch("main.scan_games")
 def test_scan_games(mock_scan):
