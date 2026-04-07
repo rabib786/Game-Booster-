@@ -71,7 +71,6 @@ interface Eel {
   suspend_services: () => () => Promise<EelResponse>;
   restore_services: () => () => Promise<EelResponse>;
   purge_ram: () => () => Promise<EelResponse>;
-  clean_system: () => () => Promise<EelResponse>;
   tweak_game_settings: (gameName: string) => () => Promise<EelResponse>;
   optimize_startup: () => () => Promise<EelResponse>;
   set_power_plan: (planType: 'high_performance' | 'balanced') => () => Promise<EelResponse>;
