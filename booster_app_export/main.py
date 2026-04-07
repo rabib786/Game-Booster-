@@ -19,6 +19,8 @@ import time
 import subprocess
 import atexit
 import signal
+import logging
+from logging.handlers import RotatingFileHandler
 
 
 
@@ -67,6 +69,16 @@ overlay_window = None
 
 # --- Configuration & Profiles ---
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+CONFIG_BACKUP_FILE = f"{CONFIG_FILE}.bak"
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'booster.log')
+
+logger = logging.getLogger("nexus_booster")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    log_handler = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding='utf-8')
+    log_handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | %(message)s'))
+    logger.addHandler(log_handler)
+    logger.propagate = False
 
 # Track system tray state
 tray_active = True
@@ -80,40 +92,70 @@ CRITICAL_PROCESS_NAMES = {
     'conhost.exe', 'sihost.exe', 'ctfmon.exe', 'taskhostw.exe', 'alg.exe'
 }
 
+def default_config():
+    return {
+        "boost_profiles": {
+            "Aggressive": ["spotify.exe", "discord.exe", "chrome.exe", "msedge.exe", "slack.exe", "teams.exe", "steamwebhelper.exe", "epicgameslauncher.exe", "onedrive.exe"],
+            "Conservative": [],
+            "Custom": []
+        },
+        "user_preferences": {
+            "tray_active": True
+        }
+    }
+
+def validate_config(config):
+    if not isinstance(config, dict):
+        return default_config(), False
+
+    merged = default_config()
+
+    profiles = config.get("boost_profiles")
+    if isinstance(profiles, dict):
+        for name in ("Aggressive", "Conservative", "Custom"):
+            candidate = profiles.get(name)
+            if isinstance(candidate, list):
+                merged["boost_profiles"][name] = [str(item).lower() for item in candidate if isinstance(item, str)]
+    prefs = config.get("user_preferences")
+    if isinstance(prefs, dict):
+        tray_pref = prefs.get("tray_active")
+        if isinstance(tray_pref, bool):
+            merged["user_preferences"]["tray_active"] = tray_pref
+
+    return merged, merged == config
+
 def load_config():
     global tray_active
     if not os.path.exists(CONFIG_FILE):
-        return {
-            "boost_profiles": {
-                "Aggressive": ["spotify.exe", "discord.exe", "chrome.exe", "msedge.exe", "slack.exe", "teams.exe", "steamwebhelper.exe", "epicgameslauncher.exe", "onedrive.exe"],
-                "Conservative": [],
-                "Custom": []
-            },
-            "user_preferences": {
-                "tray_active": True
-            }
-        }
-    with open(CONFIG_FILE, 'r') as f:
+        logger.info("Config file missing. Using defaults.")
+        config = default_config()
+        tray_active = config["user_preferences"]["tray_active"]
+        return config
+    with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
         try:
-            data = json.load(f)
+            raw_data = json.load(f)
+            data, is_valid = validate_config(raw_data)
+            if not is_valid:
+                logger.warning("Config invalid/incomplete. Auto-healing and writing normalized config.")
+                save_config(data)
             prefs = data.get("user_preferences", {})
             tray_active = prefs.get("tray_active", True)
             return data
         except json.JSONDecodeError:
-            return {
-                "boost_profiles": {
-                    "Aggressive": ["spotify.exe", "discord.exe", "chrome.exe", "msedge.exe", "slack.exe", "teams.exe"],
-                    "Conservative": [],
-                    "Custom": []
-                },
-                "user_preferences": {
-                    "tray_active": True
-                }
-            }
+            logger.exception("Config JSON is corrupt. Recovering with defaults and backup.")
+            try:
+                os.replace(CONFIG_FILE, CONFIG_BACKUP_FILE)
+            except OSError:
+                logger.exception("Failed to create config backup during recovery.")
+            recovered = default_config()
+            save_config(recovered)
+            tray_active = recovered["user_preferences"]["tray_active"]
+            return recovered
 
 def save_config(config):
-    with open(CONFIG_FILE, 'w') as f:
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=4)
+    logger.info("Config saved.")
 
 @eel.expose
 def get_boost_profiles():
@@ -125,6 +167,7 @@ def save_custom_profile(app_names):
     config = load_config()
     config.setdefault("boost_profiles", {})["Custom"] = app_names
     save_config(config)
+    logger.info("Custom boost profile saved with %d entries.", len(app_names))
     return {"status": "success", "message": "Custom profile saved."}
 
 # Track killed processes for undo functionality
