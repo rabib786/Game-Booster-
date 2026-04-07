@@ -707,26 +707,8 @@ def boost_game(pids_to_kill=None, profile_name=None):
         "details": f"Closed: {', '.join(unique_closed) if unique_closed else 'No target apps found running.'}"
     }
 
-@eel.expose
-def clean_system():
-    """
-    Targets Windows %TEMP%, C:\\Windows\\Temp, Windows Prefetch,
-    and NVIDIA DX/GL caches to safely delete temporary files and free up disk space.
-    """
+def _delete_target_dirs(target_dirs):
     freed_space = 0
-
-    # Define directories to clean
-    local_app_data = os.environ.get('LOCALAPPDATA', '')
-    windows_dir = os.environ.get('WINDIR', 'C:\\\\Windows')
-
-    target_dirs = [
-        os.environ.get('TEMP', ''),
-        os.path.join(windows_dir, 'Temp'),
-        os.path.join(windows_dir, 'Prefetch'),
-        os.path.join(local_app_data, 'NVIDIA', 'DXCache'),
-        os.path.join(local_app_data, 'NVIDIA', 'GLCache')
-    ]
-
     for t_dir in target_dirs:
         if not t_dir or not os.path.exists(t_dir):
             continue
@@ -785,10 +767,49 @@ def clean_system():
                 freed_space += _delete_dir_recursive(subdir)
         except Exception:
             pass
+    return freed_space
+
+@eel.expose
+def clean_system():
+    """
+    Targets Windows %TEMP% and C:\\Windows\\Temp to safely delete temporary files and free up disk space.
+    """
+    windows_dir = os.environ.get('WINDIR', 'C:\\\\Windows')
+
+    target_dirs = [
+        os.environ.get('TEMP', ''),
+        os.path.join(windows_dir, 'Temp')
+    ]
+
+    freed_space = _delete_target_dirs(target_dirs)
 
     return {
         "status": "success",
         "message": f"Cleaned {freed_space / (1024 * 1024):.2f} MB of Temp Junk."
+    }
+
+@eel.expose
+def clean_shader_caches():
+    """
+    Targets Windows Prefetch and GPU Shader Caches (NVIDIA/AMD) to safely delete temporary files and free up disk space.
+    """
+    local_app_data = os.environ.get('LOCALAPPDATA', '')
+    windows_dir = os.environ.get('WINDIR', 'C:\\\\Windows')
+
+    target_dirs = [
+        os.path.join(windows_dir, 'Prefetch'),
+        os.path.join(local_app_data, 'NVIDIA', 'DXCache'),
+        os.path.join(local_app_data, 'NVIDIA', 'GLCache'),
+        os.path.join(local_app_data, 'AMD', 'DxCache')
+    ]
+
+    freed_space = _delete_target_dirs(target_dirs)
+
+    freed_mb = freed_space / (1024 * 1024)
+    return {
+        "status": "success",
+        "message": f"Cleaned {freed_mb:.2f} MB of Shader/Prefetch Junk.",
+        "details": f"Cleaned GPU Shaders and Prefetch files: {freed_mb:.2f} MB" if freed_space > 0 else "No matching caches found."
     }
 
 @eel.expose

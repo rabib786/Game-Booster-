@@ -30,7 +30,7 @@ from unittest.mock import patch
 import os
 
 # Now import clean_system from main
-from main import clean_system
+from main import clean_system, clean_shader_caches, full_system_clean
 
 class TestCleanSystem(unittest.TestCase):
     @patch('os.environ.get')
@@ -101,9 +101,6 @@ class TestCleanSystem(unittest.TestCase):
 
         # Assertions
         self.assertEqual(result['status'], 'success')
-        # Freed space should be 0.00 MB because the top-level delete failed and inner deletes failed (unlink fails for all)
-        # Actually unlink only fails for locked_file.txt as configured? Wait, mock_unlink.side_effect = OSError, which applies to all calls.
-        # So inner_file_entry will also fail to unlink.
         self.assertIn("Cleaned 0.00 MB of Temp Junk", result['message'])
 
         # Verify that unlink was called for the file and rmdir for the directory
@@ -184,19 +181,33 @@ class TestCleanSystem(unittest.TestCase):
 
         # Assertions
         self.assertEqual(result['status'], 'success')
-        # Freed space should be 1.00 MB (from normal_file.txt) + 4.00 MB (from inner.txt)
-        # Target dirs list length is 5, but 'C:\\Temp' is only added if environ get returns it.
-        # C:\Temp is evaluated 5 times for target_dirs array when environ mock returns C:\Temp for all!
-        # Wait, the 5 target dirs:
-        # TEMP, WINDIR\Temp, WINDIR\Prefetch, NVIDIA\DXCache, NVIDIA\GLCache
-        # If environ.get('TEMP') is 'C:\Temp' and 'WINDIR' is 'C:\Temp', then target_dirs becomes:
-        # ['C:\Temp', 'C:\Temp\Temp', 'C:\Temp\Prefetch', 'C:\Temp\NVIDIA\DXCache', 'C:\Temp\NVIDIA\GLCache']
-        # The mock exists is True for all.
-        # Top-level scandir uses the mocked entries, others will return []
-        # So only the first 'C:\Temp' has files, the rest are empty lists according to our mock side-effect.
-        # Wait, what if the paths exactly match 'C:\Temp'?
-        # 1.00 MB + 4.00 MB = 5.00 MB.
         self.assertIn("Cleaned 5.00 MB of Temp Junk", result['message'])
+
+    @patch('main.clean_system')
+    @patch('main.clean_shader_caches')
+    def test_full_system_clean(self, mock_clean_shaders, mock_clean_sys):
+        # Setup mock returns
+        mock_clean_sys.return_value = {
+            'status': 'success',
+            'message': 'Cleaned 10.00 MB of Temp Junk.'
+        }
+        mock_clean_shaders.return_value = {
+            'status': 'success',
+            'message': 'Cleaned 5.00 MB of Shader/Prefetch Junk.',
+            'details': 'Cleaned GPU Shaders and Prefetch files: 5.00 MB'
+        }
+
+        # Test without shaders
+        result = full_system_clean(include_shaders=False)
+        self.assertEqual(result['status'], 'success')
+        self.assertIn("10.00", result['message'])
+        mock_clean_shaders.assert_not_called()
+
+        # Test with shaders
+        result = full_system_clean(include_shaders=True)
+        self.assertEqual(result['status'], 'success')
+        self.assertIn("15.00 MB", result['message'])
+        self.assertIn("System Temp: 10.00 MB | Cleaned GPU Shaders and Prefetch files: 5.00 MB", result['details'])
 
 if __name__ == '__main__':
     unittest.main()
