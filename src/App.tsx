@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Settings, Play, X } from 'lucide-react';
+import { Settings, Play, X, Loader2 } from 'lucide-react';
 
 interface EelResponse {
   status: 'success' | 'error';
@@ -965,9 +965,9 @@ function App() {
               <button
                 onClick={() => handleScanGames(true)}
                 disabled={isScanning}
-                className={`bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {isScanning ? 'Scanning...' : 'Scan Games'}
+                {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games</span>}
               </button>
             </div>
 
@@ -1065,9 +1065,9 @@ function App() {
             <button
               onClick={initiateBoost}
               disabled={isBoosting}
-              className={`bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isBoosting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isBoosting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {isBoosting ? 'Boosting...' : 'Boost Now'}
+              {isBoosting ? <><Loader2 size={16} className="animate-spin" /><span>Boosting...</span></> : <span>Boost Now</span>}
             </button>
           </div>
         </section>
@@ -1252,9 +1252,9 @@ function App() {
                 <button
                   onClick={handleCleanSystem}
                   disabled={isCleaning}
-                  className={`bg-blue-500 hover:bg-blue-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)] ${isCleaning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)] ${isCleaning ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isCleaning ? 'Cleaning...' : 'Clean Now'}
+                  {isCleaning ? <><Loader2 size={16} className="animate-spin" /><span>Cleaning...</span></> : <span>Clean Now</span>}
                 </button>
               </div>
               <div className="mt-4 pt-4 border-t border-gray-800 flex items-center">
@@ -1300,9 +1300,9 @@ function App() {
                 <button
                   onClick={handleOptimizeStartup}
                   disabled={isOptimizing}
-                  className={`bg-purple-500 hover:bg-purple-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(168,85,247,0.3)] ${isOptimizing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`flex items-center justify-center space-x-2 bg-purple-500 hover:bg-purple-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(168,85,247,0.3)] ${isOptimizing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isOptimizing ? 'Optimizing...' : 'Optimize Now'}
+                  {isOptimizing ? <><Loader2 size={16} className="animate-spin" /><span>Optimizing...</span></> : <span>Optimize Now</span>}
                 </button>
               </div>
             </section>
