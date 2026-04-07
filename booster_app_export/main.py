@@ -307,8 +307,13 @@ def toggle_overlay():
 
 
 # --- Telemetry ---
+# ⚡ Bolt Optimization: Cache the NVML device handle outside the polling loop
+# to prevent executing a redundant driver-level lookup on every 1000ms tick.
+_cached_gpu_handle = None
+
 @eel.expose
 def get_telemetry():
+    global _cached_gpu_handle
     telemetry = {
         "cpu_usage": 0,
         "ram_usage_gb": 0,
@@ -332,9 +337,10 @@ def get_telemetry():
     # GPU Stats
     if pynvml and nvml_initialized:
         try:
-            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-            rates = pynvml.nvmlDeviceGetUtilizationRates(handle)
-            temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
+            if _cached_gpu_handle is None:
+                _cached_gpu_handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            rates = pynvml.nvmlDeviceGetUtilizationRates(_cached_gpu_handle)
+            temp = pynvml.nvmlDeviceGetTemperature(_cached_gpu_handle, pynvml.NVML_TEMPERATURE_GPU)
             telemetry["gpu_usage"] = rates.gpu
             telemetry["gpu_temp"] = temp
         except Exception:
