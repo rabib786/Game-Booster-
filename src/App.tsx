@@ -101,7 +101,7 @@ declare global {
 // By moving the 1000ms polling interval here, only this component will re-render
 // instead of forcing the entire application (including heavy process/game lists)
 // to reconcile on every tick.
-const TelemetryDashboard = () => {
+const TelemetryDashboard = React.memo(() => {
   const [telemetry, setTelemetry] = useState({ cpu_usage: 0, ram_usage_gb: 0, gpu_usage: 0, gpu_temp: 0 });
 
   useEffect(() => {
@@ -178,7 +178,7 @@ const TelemetryDashboard = () => {
       </div>
     </section>
   );
-};
+});
 
 
 function App() {
