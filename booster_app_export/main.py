@@ -71,6 +71,15 @@ CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.j
 # Track system tray state
 tray_active = True
 
+# Shared safety list used by process-management features.
+# These processes should never be terminated by boost actions.
+CRITICAL_PROCESS_NAMES = {
+    'svchost.exe', 'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
+    'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
+    'spoolsv.exe', 'taskmgr.exe', 'system', 'registry', 'fontdrvhost.exe',
+    'conhost.exe', 'sihost.exe', 'ctfmon.exe', 'taskhostw.exe', 'alg.exe'
+}
+
 def load_config():
     global tray_active
     if not os.path.exists(CONFIG_FILE):
@@ -651,6 +660,7 @@ def boost_game(pids_to_kill=None, profile_name=None):
 
     freed_memory = 0
     closed_apps = []
+    skipped_apps = []
 
     # Whitelist the current process and all its children
     whitelist_pids = set()
@@ -670,6 +680,9 @@ def boost_game(pids_to_kill=None, profile_name=None):
             try:
                 proc = psutil.Process(pid)
                 name = proc.name()
+                if name and name.lower() in CRITICAL_PROCESS_NAMES:
+                    skipped_apps.append(name)
+                    continue
                 mem = proc.memory_info().rss / (1024 * 1024)
                 freed_memory += mem
                 closed_apps.append(name if name else str(pid))
@@ -693,6 +706,9 @@ def boost_game(pids_to_kill=None, profile_name=None):
                     continue
 
                 if name and name.lower() in targets_set:
+                    if name.lower() in CRITICAL_PROCESS_NAMES:
+                        skipped_apps.append(name)
+                        continue
                     mem = proc.memory_info().rss / (1024 * 1024)
                     freed_memory += mem
                     closed_apps.append(name if name else str(pid))
@@ -701,10 +717,15 @@ def boost_game(pids_to_kill=None, profile_name=None):
                 pass
 
     unique_closed = list(set(closed_apps))
+    unique_skipped = list(set(skipped_apps))
+    details_parts = [f"Closed: {', '.join(unique_closed) if unique_closed else 'No target apps found running.'}"]
+    if unique_skipped:
+        details_parts.append(f"Skipped protected processes: {', '.join(unique_skipped)}")
+
     return {
         "status": "success",
         "message": f"Freed {freed_memory:.2f} MB of RAM.",
-        "details": f"Closed: {', '.join(unique_closed) if unique_closed else 'No target apps found running.'}"
+        "details": " | ".join(details_parts)
     }
 
 def _delete_target_dirs(target_dirs):
@@ -1567,13 +1588,6 @@ def get_live_processes():
 
     # Critical Windows System Processes
     # ⚡ Bolt Optimization: Use O(1) set for faster lookups inside the loop
-    critical_processes_set = set([
-        'svchost.exe', 'explorer.exe', 'dwm.exe', 'smss.exe', 'csrss.exe',
-        'wininit.exe', 'services.exe', 'lsass.exe', 'winlogon.exe',
-        'spoolsv.exe', 'taskmgr.exe', 'system', 'registry', 'fontdrvhost.exe',
-        'conhost.exe', 'sihost.exe', 'ctfmon.exe', 'taskhostw.exe', 'alg.exe'
-    ])
-
     # ⚡ Bolt Optimization: Pre-fetch memory_info with process_iter to avoid expensive attribute retrieval inside loop
     for proc in psutil.process_iter(['pid', 'name', 'memory_info']):
         try:
@@ -1590,7 +1604,7 @@ def get_live_processes():
             if not name.strip():
                 continue
 
-            if name.lower() in critical_processes_set:
+            if name.lower() in CRITICAL_PROCESS_NAMES:
                 continue
 
             # Fetch memory usage from pre-fetched info
