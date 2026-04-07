@@ -204,6 +204,7 @@ function App() {
   const [boostProfile, setBoostProfile] = useState<'Aggressive' | 'Conservative' | 'Custom'>('Aggressive');
   const [availableProfiles, setAvailableProfiles] = useState<Record<string, string[]>>({});
   const [isUndoing, setIsUndoing] = useState(false);
+  const [isSavingCustomProfile, setIsSavingCustomProfile] = useState(false);
 
   useEffect(() => {
     const fetchTrayStatus = async () => {
@@ -618,6 +619,46 @@ function App() {
 
   const toggleAutoBoost = () => setAutoBoost(!autoBoost);
 
+  const handleSaveCustomProfile = async () => {
+    if (selectedPids.length === 0) {
+      addLog('No selected apps to save for custom profile.', true);
+      return;
+    }
+
+    const selectedAppNames = liveProcesses
+      .filter((proc) => selectedPids.includes(proc.pid))
+      .map((proc) => proc.name);
+
+    if (selectedAppNames.length === 0) {
+      addLog('Unable to resolve selected apps for custom profile.', true);
+      return;
+    }
+
+    setIsSavingCustomProfile(true);
+    addLog(`Saving custom profile with ${selectedAppNames.length} apps...`);
+    if (window.eel && window.eel.save_custom_profile) {
+      try {
+        const result = await window.eel.save_custom_profile(selectedAppNames)();
+        if (result.status === 'success') {
+          addLog(result.message);
+          const refreshed = await window.eel.get_boost_profiles()();
+          setAvailableProfiles(refreshed);
+        } else {
+          addLog(`Error: ${result.message}`, true);
+        }
+      } catch (error) {
+        addLog(`Failed to save custom profile: ${error}`, true);
+      } finally {
+        setIsSavingCustomProfile(false);
+      }
+    } else {
+      setTimeout(() => {
+        addLog(`[Web Preview] Saved custom profile with ${selectedAppNames.length} apps.`);
+        setIsSavingCustomProfile(false);
+      }, 700);
+    }
+  };
+
   const handleToggleMonitor = async () => {
     if (isMonitoring) {
       setIsMonitoring(false);
@@ -879,14 +920,38 @@ function App() {
     return (selectedProcesses.reduce((sum, p) => sum + p.memory_mb, 0) / 1024).toFixed(2);
   }, [selectedProcesses]);
 
+  const tabOrder: Array<'Library' | 'Boost Tab' | 'Booster Prime' | 'Settings'> = ['Library', 'Boost Tab', 'Booster Prime', 'Settings'];
+
+  const handleTabStep = (direction: -1 | 1) => {
+    const currentIndex = tabOrder.indexOf(currentTab as typeof tabOrder[number]);
+    if (currentIndex === -1) {
+      setCurrentTab('Library');
+      return;
+    }
+    const nextIndex = (currentIndex + direction + tabOrder.length) % tabOrder.length;
+    setCurrentTab(tabOrder[nextIndex]);
+  };
+
   return (
     <div className="bg-dark-bg text-gray-300 font-sans h-screen overflow-hidden flex flex-col select-none">
 
       {/* BEGIN: SubNavigation */}
       <nav className="bg-header-bg px-8 py-2 flex items-center space-x-8 text-sm font-semibold uppercase tracking-wider" data-purpose="booster-sub-nav">
         <div className="flex items-center space-x-2 text-gray-500 mr-4">
-          <button aria-label="Previous" className="hover:text-white focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded">&lt;</button>
-          <button aria-label="Next" className="hover:text-white focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded">&gt;</button>
+          <button
+            aria-label="Previous"
+            onClick={() => handleTabStep(-1)}
+            className="hover:text-white focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded"
+          >
+            &lt;
+          </button>
+          <button
+            aria-label="Next"
+            onClick={() => handleTabStep(1)}
+            className="hover:text-white focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded"
+          >
+            &gt;
+          </button>
         </div>
         <button className={`transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1 ${currentTab === "Library" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Library")}>Library</button>
         <button className={`transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1 ${currentTab === "Boost Tab" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Boost Tab")}>Boost</button>
@@ -1049,6 +1114,28 @@ function App() {
             </div>
           </div>
           <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-2">
+              <label htmlFor="boost-profile" className="text-xs font-bold uppercase text-gray-400">Profile</label>
+              <select
+                id="boost-profile"
+                value={boostProfile}
+                onChange={(e) => setBoostProfile(e.target.value as 'Aggressive' | 'Conservative' | 'Custom')}
+                className="bg-black border border-gray-700 text-white text-xs uppercase tracking-wider rounded px-2 py-1.5 focus:outline-none focus:border-razer-green"
+              >
+                <option value="Aggressive">Aggressive</option>
+                <option value="Conservative">Conservative</option>
+                <option value="Custom">Custom</option>
+              </select>
+              {boostProfile === 'Custom' && (
+                <button
+                  onClick={handleSaveCustomProfile}
+                  disabled={isSavingCustomProfile}
+                  className={`text-xs font-bold uppercase px-3 py-1.5 rounded border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white ${isSavingCustomProfile ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isSavingCustomProfile ? 'Saving...' : 'Save Custom'}
+                </button>
+              )}
+            </div>
             <button
               className="flex items-center space-x-3 cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded"
               onClick={toggleAutoBoost}
