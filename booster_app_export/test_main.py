@@ -484,3 +484,62 @@ def test_suspend_services_exception(mock_popen):
     assert result['status'] == 'success'
     assert 'Suspended 2 non-essential services.' in result['message']
     assert main.suspended_services_list == ['TabletInputService', 'DiagTrack']
+
+@patch('main.winreg')
+def test_optimize_startup_success(mock_winreg):
+    mock_key = MagicMock()
+    mock_winreg.OpenKey.return_value = mock_key
+    mock_winreg.HKEY_CURRENT_USER = 'HKEY_CURRENT_USER'
+    mock_winreg.KEY_ALL_ACCESS = 'KEY_ALL_ACCESS'
+
+    mock_winreg.EnumValue.side_effect = [
+        ("Spotify", "C:\\...\\spotify.exe", 1),
+        ("GoodApp", "C:\\...\\goodapp.exe", 1),
+        ("Discord", "C:\\...\\discord.exe", 1),
+        OSError("No more values")
+    ]
+
+    result = main.optimize_startup()
+
+    assert result['status'] == 'success'
+    assert 'Disabled 2 startup programs.' in result['message']
+    assert 'Spotify' in result['details']
+    assert 'Discord' in result['details']
+
+    assert mock_winreg.DeleteValue.call_count == 2
+    mock_winreg.DeleteValue.assert_any_call(mock_key, "Spotify")
+    mock_winreg.DeleteValue.assert_any_call(mock_key, "Discord")
+    mock_winreg.CloseKey.assert_called_once_with(mock_key)
+
+@patch('main.winreg')
+def test_optimize_startup_no_targets(mock_winreg):
+    mock_key = MagicMock()
+    mock_winreg.OpenKey.return_value = mock_key
+
+    mock_winreg.EnumValue.side_effect = [
+        ("GoodApp", "C:\\...\\goodapp.exe", 1),
+        ("AnotherApp", "C:\\...\\another.exe", 1),
+        OSError("No more values")
+    ]
+
+    result = main.optimize_startup()
+
+    assert result['status'] == 'success'
+    assert result['message'] == 'No non-essential startup programs found.'
+    assert mock_winreg.DeleteValue.call_count == 0
+
+@patch('main.winreg')
+def test_optimize_startup_exception(mock_winreg):
+    mock_winreg.OpenKey.side_effect = Exception("Registry access denied")
+
+    result = main.optimize_startup()
+
+    assert result['status'] == 'error'
+    assert 'Failed to access registry: Registry access denied' in result['message']
+
+def test_optimize_startup_non_windows():
+    with patch('main.winreg', None):
+        result = main.optimize_startup()
+
+        assert result['status'] == 'error'
+        assert result['message'] == 'Startup optimization is only supported on Windows.'
