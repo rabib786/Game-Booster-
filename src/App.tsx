@@ -1087,7 +1087,13 @@ function App() {
               <div className="bg-panel-bg p-12 rounded border border-gray-800 text-center flex flex-col items-center justify-center space-y-4">
                 <span className="text-5xl opacity-50">🎮</span>
                 <p className="text-gray-400 text-lg">No games found in your library.</p>
-                <p className="text-sm text-gray-600">Click the Scan Games button to automatically find Steam titles.</p>
+                <button
+                  onClick={() => handleScanGames(true)}
+                  disabled={isScanning}
+                  className={`mt-2 flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games Now</span>}
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -1262,9 +1268,9 @@ function App() {
             <button
               onClick={handleNetworkFlush}
               disabled={isFlushingNetwork}
-              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 ${isFlushingNetwork ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 flex items-center justify-center space-x-2 ${isFlushingNetwork ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {isFlushingNetwork ? 'Flushing...' : 'Flush Network'}
+              {isFlushingNetwork ? <><Loader2 size={16} className="animate-spin" /><span>Flushing...</span></> : <span>Flush Network</span>}
             </button>
           </div>
 
@@ -1329,9 +1335,9 @@ function App() {
             <button
               onClick={handlePurgeRam}
               disabled={isPurging}
-              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 ${isPurging ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 flex items-center justify-center space-x-2 ${isPurging ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {isPurging ? 'Purging...' : 'Purge RAM'}
+              {isPurging ? <><Loader2 size={16} className="animate-spin" /><span>Purging...</span></> : <span>Purge RAM</span>}
             </button>
           </div>
 
