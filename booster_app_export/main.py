@@ -179,16 +179,34 @@ def undo_boost():
     if not killed_processes_history:
         return {"status": "error", "message": "No applications to restart."}
 
+    # Security Validation: Aggregate trusted targets from all boost profiles
+    config = load_config()
+    profiles = config.get("boost_profiles", {})
+    trusted_targets = set()
+    for profile_name in profiles:
+        for app in profiles[profile_name]:
+            trusted_targets.add(app.lower())
+
+    # Add default targets as a safety measure
+    trusted_targets.update(['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
+
     restarted = []
     failed = []
 
     for path in killed_processes_history:
-        if os.path.exists(path):
-            try:
-                subprocess.Popen([path], cwd=os.path.dirname(path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
-                restarted.append(os.path.basename(path))
-            except Exception as e:
-                failed.append(os.path.basename(path))
+        # Normalize path for security
+        normalized_path = os.path.normpath(os.path.abspath(path))
+        if os.path.exists(normalized_path):
+            exe_name = os.path.basename(normalized_path).lower()
+            if exe_name in trusted_targets:
+                try:
+                    subprocess.Popen([normalized_path], cwd=os.path.dirname(normalized_path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+                    restarted.append(os.path.basename(normalized_path))
+                except Exception:
+                    failed.append(os.path.basename(normalized_path))
+            else:
+                logger.warning("Blocked attempt to restart untrusted process via undo: %s", normalized_path)
+                failed.append(os.path.basename(normalized_path))
 
     killed_processes_history.clear()
 
@@ -689,7 +707,6 @@ def purge_ram():
         return {"status": "error", "message": f"Failed to purge RAM: {str(e)}"}
 
 @eel.expose
-@eel.expose
 def boost_game(pids_to_kill=None, profile_name=None):
     """
     Loops through running processes and safely kills selected
@@ -698,7 +715,16 @@ def boost_game(pids_to_kill=None, profile_name=None):
     # ⚡ Bolt Optimization: Convert list structures to O(1) sets before entering the loop
     global killed_processes_history
     config = load_config()
-    targets_list = config.get("boost_profiles", {}).get(profile_name, ['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
+
+    # Security: Build a comprehensive trusted set from all profiles
+    profiles = config.get("boost_profiles", {})
+    trusted_targets = set()
+    for p_name in profiles:
+        for app in profiles[p_name]:
+            trusted_targets.add(app.lower())
+    trusted_targets.update(['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
+
+    targets_list = profiles.get(profile_name, ['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
     if profile_name == "Conservative" and pids_to_kill is None:
         targets_list = [] # Only kill explicit selection
 
@@ -737,8 +763,12 @@ def boost_game(pids_to_kill=None, profile_name=None):
                 closed_apps.append(name if name else str(pid))
                 try:
                     exe_path = proc.exe()
-                    if exe_path and exe_path not in killed_processes_history:
-                        killed_processes_history.append(exe_path)
+                    if exe_path:
+                        normalized_exe = os.path.normpath(os.path.abspath(exe_path))
+                        # Security Check: Only record for undo if it's in our trusted set
+                        if os.path.basename(normalized_exe).lower() in trusted_targets:
+                            if normalized_exe not in killed_processes_history:
+                                killed_processes_history.append(normalized_exe)
                 except:
                     pass
                 proc.kill()
@@ -761,6 +791,18 @@ def boost_game(pids_to_kill=None, profile_name=None):
                     mem = proc.memory_info().rss / (1024 * 1024)
                     freed_memory += mem
                     closed_apps.append(name if name else str(pid))
+
+                    # Record for undo in fallback scan as well
+                    try:
+                        exe_path = proc.exe()
+                        if exe_path:
+                            normalized_exe = os.path.normpath(os.path.abspath(exe_path))
+                            # name is already in targets_set, which is a subset of trusted_targets
+                            if normalized_exe not in killed_processes_history:
+                                killed_processes_history.append(normalized_exe)
+                    except:
+                        pass
+
                     proc.kill()
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
