@@ -1202,13 +1202,22 @@ function App() {
                 <div className={`absolute top-1 w-3 h-3 bg-black rounded-full transition-all ${autoBoost ? 'right-1' : 'left-1'}`}></div>
               </div>
             </button>
-            <button
-              onClick={initiateBoost}
-              disabled={isBoosting}
-              className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isBoosting ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isBoosting ? <><Loader2 size={16} className="animate-spin" /><span>Boosting...</span></> : <span>Boost Now</span>}
-            </button>
+            <div className="flex space-x-4">
+              <button
+                onClick={handleUndoBoost}
+                disabled={isUndoing}
+                className={`flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 border border-gray-700 ${isUndoing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isUndoing ? <><Loader2 size={16} className="animate-spin" /><span>Undoing...</span></> : <span>Undo Boost</span>}
+              </button>
+              <button
+                onClick={initiateBoost}
+                disabled={isBoosting}
+                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isBoosting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isBoosting ? <><Loader2 size={16} className="animate-spin" /><span>Boosting...</span></> : <span>Boost Now</span>}
+              </button>
+            </div>
           </div>
         </section>
         {/* END: OptimizationSummary */}
