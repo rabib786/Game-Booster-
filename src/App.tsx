@@ -546,8 +546,9 @@ function App() {
         setSelectedPids([]);
       } else if (boostProfile === 'Aggressive' || boostProfile === 'Custom') {
         const targetNames = availableProfiles[boostProfile] || [];
-        const lowerTargetNames = targetNames.map(n => n.toLowerCase());
-        const pids = liveProcesses.filter(p => lowerTargetNames.includes(p.name.toLowerCase())).map(p => p.pid);
+        // ⚡ Bolt Optimization: Replace O(N*M) array cross-reference with an O(N) Set lookup
+        const lowerTargetNamesSet = new Set(targetNames.map(n => n.toLowerCase()));
+        const pids = liveProcesses.filter(p => lowerTargetNamesSet.has(p.name.toLowerCase())).map(p => p.pid);
         setSelectedPids(pids);
       }
     }
@@ -667,8 +668,10 @@ function App() {
       return;
     }
 
+    // ⚡ Bolt Optimization: Replace O(N*M) array lookup with O(1) Set lookup
+    const selectedPidsSetForSave = new Set(selectedPids);
     const selectedAppNames = liveProcesses
-      .filter((proc) => selectedPids.includes(proc.pid))
+      .filter((proc) => selectedPidsSetForSave.has(proc.pid))
       .map((proc) => proc.name);
 
     if (selectedAppNames.length === 0) {
