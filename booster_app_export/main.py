@@ -92,6 +92,30 @@ CRITICAL_PROCESS_NAMES = {
     'conhost.exe', 'sihost.exe', 'ctfmon.exe', 'taskhostw.exe', 'alg.exe'
 }
 
+# ⚡ Bolt Optimization: Unified process whitelist cache to prevent redundant process tree traversal.
+# Refreshed every 60 seconds to balance accuracy with performance.
+_cached_whitelist_pids = set()
+_last_whitelist_refresh = 0
+
+def _get_process_whitelist():
+    """
+    Returns a set of PIDs for the current process and its children.
+    Caches the result for 60 seconds to avoid expensive recursive system calls.
+    """
+    global _cached_whitelist_pids, _last_whitelist_refresh
+    current_time = time.time()
+    if current_time - _last_whitelist_refresh > 60 or not _cached_whitelist_pids:
+        _cached_whitelist_pids.clear()
+        try:
+            current_process = psutil.Process()
+            _cached_whitelist_pids.add(current_process.pid)
+            for child in current_process.children(recursive=True):
+                _cached_whitelist_pids.add(child.pid)
+            _last_whitelist_refresh = current_time
+        except Exception:
+            pass
+    return _cached_whitelist_pids
+
 def default_config():
     return {
         "boost_profiles": {
@@ -422,8 +446,6 @@ def monitor_game_process():
     bg_targets_set = set(['chrome.exe', 'discord.exe', 'msedge.exe', 'spotify.exe'])
 
     # ⚡ Bolt Optimization: Cache dynamic process tree state to prevent expensive OS-level allocations on every loop
-    whitelist_pids = set()
-    last_whitelist_refresh = 0
     cached_target_game_exe = None
     target_game_exe_lower = ""
 
@@ -499,19 +521,7 @@ def monitor_game_process():
                     pass
 
             # Whitelist critical system processes and our own process tree
-            # Refresh this cache periodically to catch newly spawned child processes
-            # without incurring the heavy O(N) OS-level tree building cost every 5 seconds
-            current_time = time.time()
-            if current_time - last_whitelist_refresh > 60:
-                whitelist_pids.clear()
-                try:
-                    current_process = psutil.Process()
-                    whitelist_pids.add(current_process.pid)
-                    for child in current_process.children(recursive=True):
-                        whitelist_pids.add(child.pid)
-                    last_whitelist_refresh = current_time
-                except Exception:
-                    pass
+            whitelist_pids = _get_process_whitelist()
 
             # Set background apps to low priority and restrict core affinity
             for proc in bg_procs_to_adjust:
@@ -712,14 +722,7 @@ def boost_game(pids_to_kill=None, profile_name=None):
     skipped_apps = []
 
     # Whitelist the current process and all its children
-    whitelist_pids = set()
-    try:
-        current_process = psutil.Process()
-        whitelist_pids.add(current_process.pid)
-        for child in current_process.children(recursive=True):
-            whitelist_pids.add(child.pid)
-    except Exception:
-        pass
+    whitelist_pids = _get_process_whitelist()
 
     if pids_to_kill is not None:
         # ⚡ Bolt Optimization: Directly lookup targeted PIDs in O(K) instead of full O(N) system traversal
@@ -1608,9 +1611,6 @@ def launch_game(game_id, profile, exe_path, exe_name):
     except Exception as e:
         return {"status": "error", "message": f"Failed to launch game: {str(e)}"}
 
-_cached_whitelist_pids = set()
-_last_whitelist_refresh = 0
-
 @eel.expose
 def get_live_processes():
     """
@@ -1618,22 +1618,11 @@ def get_live_processes():
     Filters out critical Windows system processes and the app's own process tree.
     Returns JSON array with pid, name, memory_mb.
     """
-    global _cached_whitelist_pids, _last_whitelist_refresh
     processes = []
 
     # ⚡ Bolt Optimization: Cache dynamic process tree state to prevent expensive OS-level allocations on every loop
     # Whitelist the current process and all its children (e.g., the browser spawned by eel)
-    current_time = time.time()
-    if current_time - _last_whitelist_refresh > 60:
-        _cached_whitelist_pids.clear()
-        try:
-            current_process = psutil.Process()
-            _cached_whitelist_pids.add(current_process.pid)
-            for child in current_process.children(recursive=True):
-                _cached_whitelist_pids.add(child.pid)
-            _last_whitelist_refresh = current_time
-        except Exception:
-            pass
+    whitelist_pids = _get_process_whitelist()
 
     # Critical Windows System Processes
     # ⚡ Bolt Optimization: Use O(1) set for faster lookups inside the loop
@@ -1646,7 +1635,7 @@ def get_live_processes():
             if not pid or not name:
                 continue
 
-            if pid in _cached_whitelist_pids:
+            if pid in whitelist_pids:
                 continue
 
             # Filter empty names or typical system names
