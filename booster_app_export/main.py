@@ -941,7 +941,6 @@ def full_system_clean(include_shaders: bool = False):
     if res_sys.get('status') == 'success':
         try:
             msg = res_sys.get('message', '')
-            import re
             match = re.search(r'([\d.]+)\s*MB', msg)
             if match:
                 sys_mb = float(match.group(1))
@@ -955,7 +954,6 @@ def full_system_clean(include_shaders: bool = False):
         if res_shaders.get('status') == 'success':
             try:
                 msg = res_shaders.get('message', '')
-                import re
                 match = re.search(r'([\d.]+)\s*MB', msg)
                 if match:
                     shader_mb = float(match.group(1))
