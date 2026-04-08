@@ -54,7 +54,9 @@ describe('App', () => {
       const cleanSystemMock = vi.fn().mockResolvedValue({ status: 'success', message: 'Successfully cleaned 500MB' });
       vi.stubGlobal('eel', {
         full_system_clean: () => cleanSystemMock,
-        get_prime_games: () => vi.fn().mockResolvedValue([])
+        get_prime_games: () => vi.fn().mockResolvedValue([]),
+        is_tray_active: () => vi.fn().mockResolvedValue(false),
+        get_boost_profiles: () => vi.fn().mockResolvedValue({})
       });
 
       render(<App />);
@@ -83,7 +85,9 @@ describe('App', () => {
       const cleanSystemMock = vi.fn().mockResolvedValue({ status: 'error', message: 'Disk access denied' });
       vi.stubGlobal('eel', {
         full_system_clean: () => cleanSystemMock,
-        get_prime_games: () => vi.fn().mockResolvedValue([])
+        get_prime_games: () => vi.fn().mockResolvedValue([]),
+        is_tray_active: () => vi.fn().mockResolvedValue(false),
+        get_boost_profiles: () => vi.fn().mockResolvedValue({})
       });
 
       render(<App />);
@@ -103,7 +107,9 @@ describe('App', () => {
       const cleanSystemMock = vi.fn().mockRejectedValue(new Error('Network Error'));
       vi.stubGlobal('eel', {
         full_system_clean: () => cleanSystemMock,
-        get_prime_games: () => vi.fn().mockResolvedValue([])
+        get_prime_games: () => vi.fn().mockResolvedValue([]),
+        is_tray_active: () => vi.fn().mockResolvedValue(false),
+        get_boost_profiles: () => vi.fn().mockResolvedValue({})
       });
 
       render(<App />);
@@ -151,7 +157,9 @@ describe('App', () => {
       const optimizeStartupMock = vi.fn().mockResolvedValue({ status: 'success', message: 'Startup optimized' });
       vi.stubGlobal('eel', {
         optimize_startup: () => optimizeStartupMock,
-        get_prime_games: () => vi.fn().mockResolvedValue([])
+        get_prime_games: () => vi.fn().mockResolvedValue([]),
+        is_tray_active: () => vi.fn().mockResolvedValue(false),
+        get_boost_profiles: () => vi.fn().mockResolvedValue({})
       });
 
       render(<App />);
@@ -180,7 +188,9 @@ describe('App', () => {
       const optimizeStartupMock = vi.fn().mockResolvedValue({ status: 'error', message: 'Access denied' });
       vi.stubGlobal('eel', {
         optimize_startup: () => optimizeStartupMock,
-        get_prime_games: () => vi.fn().mockResolvedValue([])
+        get_prime_games: () => vi.fn().mockResolvedValue([]),
+        is_tray_active: () => vi.fn().mockResolvedValue(false),
+        get_boost_profiles: () => vi.fn().mockResolvedValue({})
       });
 
       render(<App />);
@@ -200,7 +210,9 @@ describe('App', () => {
       const optimizeStartupMock = vi.fn().mockRejectedValue(new Error('Network Error'));
       vi.stubGlobal('eel', {
         optimize_startup: () => optimizeStartupMock,
-        get_prime_games: () => vi.fn().mockResolvedValue([])
+        get_prime_games: () => vi.fn().mockResolvedValue([]),
+        is_tray_active: () => vi.fn().mockResolvedValue(false),
+        get_boost_profiles: () => vi.fn().mockResolvedValue({})
       });
 
       render(<App />);
