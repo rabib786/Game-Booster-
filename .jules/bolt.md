@@ -9,3 +9,6 @@
 ## 2024-04-07 - Caching NVML Device Handles
 **Learning:** When retrieving telemetry via `pynvml` at high frequency (e.g., 1000ms polling), repeatedly calling C-level driver binding functions like `pynvml.nvmlDeviceGetHandleByIndex(0)` introduces measurable CPU overhead on the hot path, despite retrieving a static value.
 **Action:** Cache static device handles or invariant driver resources at the global module level to eliminate redundant system or C-level calls from active polling loops.
+## 2024-04-08 - O(N) System Call Bottleneck in psutil Loops
+**Learning:** Calling OS-dependent functions like `proc.memory_info()` individually inside a `psutil.process_iter()` loop executes a discrete, expensive system call per process, creating a severe N+1 performance bottleneck during system-wide scans.
+**Action:** Always specify the required attributes directly in the `process_iter` call (e.g., `psutil.process_iter(['pid', 'name', 'memory_info'])`). This allows `psutil` to bulk-fetch the data using optimized, batched internal C/OS-level calls, retrieving it later from the pre-populated `proc.info` dictionary.
