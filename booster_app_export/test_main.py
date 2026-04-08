@@ -484,3 +484,44 @@ def test_suspend_services_exception(mock_popen):
     assert result['status'] == 'success'
     assert 'Suspended 2 non-essential services.' in result['message']
     assert main.suspended_services_list == ['TabletInputService', 'DiagTrack']
+
+
+class TestPurgeRam(unittest.TestCase):
+    @patch('main.ctypes')
+    @patch('main.psutil')
+    def test_purge_ram_success(self, mock_psutil, mock_ctypes):
+        # Setup mock windll and processes
+        mock_ctypes.windll.kernel32.OpenProcess.return_value = 'mock_handle'
+        mock_psutil.pids.return_value = [100, 200, 300]
+
+        result = main.purge_ram()
+
+        self.assertEqual(result['status'], 'success')
+        self.assertIn('Successfully purged RAM for 3 processes', result['message'])
+        self.assertEqual(mock_ctypes.windll.kernel32.OpenProcess.call_count, 3)
+        self.assertEqual(mock_ctypes.windll.psapi.EmptyWorkingSet.call_count, 3)
+        self.assertEqual(mock_ctypes.windll.kernel32.CloseHandle.call_count, 3)
+
+    @patch('main.ctypes')
+    def test_purge_ram_unsupported_os(self, mock_ctypes):
+        # Simulate missing windll
+        del mock_ctypes.windll
+
+        result = main.purge_ram()
+
+        self.assertEqual(result['status'], 'error')
+        self.assertEqual(result['message'], 'RAM Purge is only supported on Windows.')
+
+    @patch('main.ctypes')
+    @patch('main.psutil')
+    def test_purge_ram_partial_success_with_errors(self, mock_psutil, mock_ctypes):
+        # Simulate an exception in EmptyWorkingSet for one of the processes
+        mock_ctypes.windll.kernel32.OpenProcess.return_value = 'mock_handle'
+        mock_ctypes.windll.psapi.EmptyWorkingSet.side_effect = [None, Exception("Access Denied"), None]
+        mock_psutil.pids.return_value = [100, 200, 300]
+
+        result = main.purge_ram()
+
+        self.assertEqual(result['status'], 'success')
+        self.assertIn('Successfully purged RAM for 2 processes', result['message'])
+        self.assertEqual(mock_ctypes.windll.kernel32.OpenProcess.call_count, 3)
