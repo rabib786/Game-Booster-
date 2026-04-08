@@ -882,13 +882,15 @@ function App() {
         }
       } catch (error) {
         addLog(`Failed to update hotkeys: ${error}`, true);
+      } finally {
+        setIsUpdatingHotkeys(false);
       }
     } else {
       setTimeout(() => {
         addLog(`[Web Preview] Hotkeys updated: Boost=${boostHotkey}, Overlay=${overlayHotkey}`);
+        setIsUpdatingHotkeys(false);
       }, 500);
     }
-    setIsUpdatingHotkeys(false);
   };
 
   const handleNetworkFlush = async () => {
@@ -905,15 +907,15 @@ function App() {
         }
       } catch (error) {
         addLog(`Failed to flush network: ${error}`, true);
+      } finally {
+        setIsFlushingNetwork(false);
       }
     } else {
       setTimeout(() => {
         addLog('[Web Preview] Network flushed and reset successfully.');
         setIsFlushingNetwork(false);
       }, 1500);
-      return;
     }
-    setIsFlushingNetwork(false);
   };
 
   // ⚡ Bolt Optimization: Prevent O(N²) list rendering bottleneck
