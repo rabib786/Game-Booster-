@@ -779,8 +779,8 @@ def boost_game(pids_to_kill=None, profile_name=None):
                 pass
     else:
         # Fallback to full system scan if no explicit targets are given
-        # ⚡ Bolt Optimization: Pre-fetch memory_info with process_iter to avoid expensive attribute retrieval inside loop
-        for proc in psutil.process_iter(['pid', 'name', 'memory_info']):
+        # ⚡ Bolt Optimization: Lazy load memory_info to avoid expensive attribute retrieval for skipped processes
+        for proc in psutil.process_iter(['pid', 'name']):
             try:
                 pid = proc.info.get('pid')
                 name = proc.info.get('name')
@@ -792,7 +792,10 @@ def boost_game(pids_to_kill=None, profile_name=None):
                     if name.lower() in CRITICAL_PROCESS_NAMES:
                         skipped_apps.append(name)
                         continue
-                    mem_info = proc.info.get('memory_info')
+                    try:
+                        mem_info = proc.memory_info()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        mem_info = None
                     mem = (mem_info.rss / (1024 * 1024)) if mem_info else 0
                     freed_memory += mem
                     closed_apps.append(name if name else str(pid))
@@ -1668,8 +1671,8 @@ def get_live_processes():
 
     # Critical Windows System Processes
     # ⚡ Bolt Optimization: Use O(1) set for faster lookups inside the loop
-    # ⚡ Bolt Optimization: Pre-fetch memory_info with process_iter to avoid expensive attribute retrieval inside loop
-    for proc in psutil.process_iter(['pid', 'name', 'memory_info']):
+    # ⚡ Bolt Optimization: Lazy load memory_info to avoid expensive attribute retrieval for skipped processes
+    for proc in psutil.process_iter(['pid', 'name']):
         try:
             pid = proc.info.get('pid')
             name = proc.info.get('name')
@@ -1687,8 +1690,11 @@ def get_live_processes():
             if name.lower() in CRITICAL_PROCESS_NAMES:
                 continue
 
-            # Fetch memory usage from pre-fetched info
-            mem_info = proc.info.get('memory_info')
+            # Fetch memory usage only after passing skips
+            try:
+                mem_info = proc.memory_info()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                mem_info = None
             if mem_info:
                 mem_mb = mem_info.rss / (1024 * 1024)
             else:
