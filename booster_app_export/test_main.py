@@ -334,6 +334,57 @@ class TestServiceManagement(unittest.TestCase):
         self.assertIn('Restored 1 services.', result['message'])
         self.assertEqual(main.suspended_services_list, [])
 
+class TestUndoBoost(unittest.TestCase):
+    @patch('main.subprocess.Popen')
+    @patch('main.os.path.exists')
+    @patch('main.load_config')
+    def test_undo_boost_success(self, mock_load_config, mock_exists, mock_popen):
+        mock_load_config.return_value = {
+            "boost_profiles": {
+                "Aggressive": ["discord.exe"]
+            }
+        }
+        mock_exists.return_value = True
+
+        main.killed_processes_history = [
+            "/mock/path/discord.exe"
+        ]
+
+        result = main.undo_boost()
+
+        self.assertEqual(result['status'], 'success')
+        self.assertIn('Restarted 1 applications', result['message'])
+        self.assertEqual(len(main.killed_processes_history), 0)
+        mock_popen.assert_called_once()
+
+    def test_undo_boost_empty_history(self):
+        main.killed_processes_history = []
+        result = main.undo_boost()
+        self.assertEqual(result['status'], 'error')
+        self.assertEqual(result['message'], 'No applications to restart.')
+
+    @patch('main.subprocess.Popen')
+    @patch('main.os.path.exists')
+    @patch('main.load_config')
+    def test_undo_boost_untrusted_app(self, mock_load_config, mock_exists, mock_popen):
+        mock_load_config.return_value = {
+            "boost_profiles": {
+                "Aggressive": ["discord.exe"]
+            }
+        }
+        mock_exists.return_value = True
+
+        main.killed_processes_history = [
+            "/mock/path/malicious.exe"
+        ]
+
+        result = main.undo_boost()
+
+        self.assertEqual(result['status'], 'success')
+        self.assertIn('Failed to restart 1', result['message'])
+        self.assertEqual(len(main.killed_processes_history), 0)
+        mock_popen.assert_not_called()
+
 class TestPurgeRam(unittest.TestCase):
     @patch('main.ctypes')
     @patch('main.psutil')
