@@ -12,3 +12,6 @@
 ## 2024-04-08 - O(N) System Call Bottleneck in psutil Loops
 **Learning:** Calling OS-dependent functions like `proc.memory_info()` individually inside a `psutil.process_iter()` loop executes a discrete, expensive system call per process, creating a severe N+1 performance bottleneck during system-wide scans.
 **Action:** Always specify the required attributes directly in the `process_iter` call (e.g., `psutil.process_iter(['pid', 'name', 'memory_info'])`). This allows `psutil` to bulk-fetch the data using optimized, batched internal C/OS-level calls, retrieving it later from the pre-populated `proc.info` dictionary.
+## 2024-04-09 - Memoizing Append-Only Logs
+**Learning:** When rendering append-only lists or logs (like system consoles) that grow indefinitely, extracting them into a separate `React.memo()` component is critical. Otherwise, unrelated, high-frequency global state updates (e.g., text inputs) will trigger expensive O(N) recalculations across the array on every render.
+**Action:** Extract growing log arrays into a dedicated `React.memo` component to isolate render loops.

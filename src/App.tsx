@@ -97,6 +97,31 @@ declare global {
   }
 }
 
+// ⚡ Bolt: Extract SystemConsole to prevent O(N) re-renders
+// The logs array grows indefinitely. Without React.memo, typing in text inputs or
+// switching tabs will force the entire list of elements to re-render.
+const SystemConsole = React.memo(({ logs }: { logs: string[] }) => {
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  return (
+    <section className="mt-10 mb-8 border-t border-gray-800 pt-6">
+      <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Log</h2>
+      <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
+        <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1">
+          {logs.map((log, i) => (
+            <p key={i} className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
+          ))}
+          <div ref={logsEndRef} />
+        </div>
+      </div>
+    </section>
+  );
+});
+
 // ⚡ Bolt: Extracted TelemetryDashboard to prevent whole-app re-renders
 // By moving the 1000ms polling interval here, only this component will re-render
 // instead of forcing the entire application (including heavy process/game lists)
@@ -191,7 +216,6 @@ function App() {
   const [isUpdatingHotkeys, setIsUpdatingHotkeys] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const logsEndRef = useRef<HTMLDivElement>(null);
 
   const [trayMode, setTrayMode] = useState(false);
   const [isTrayActive, setIsTrayActive] = useState(false);
@@ -313,10 +337,6 @@ function App() {
       fetchPrimeGames();
     }
   }, [currentTab]);
-
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
 
   // Expose a function to Python to add logs asynchronously
   useEffect(() => {
@@ -1574,17 +1594,7 @@ function App() {
 
 
 {/* Output Console Box (moved from old design) */}
-        <section className="mt-10 mb-8 border-t border-gray-800 pt-6">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Log</h2>
-          <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
-            <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1">
-              {logs.map((log, i) => (
-                <p key={i} className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
-              ))}
-              <div ref={logsEndRef} />
-            </div>
-          </div>
-        </section>
+        <SystemConsole logs={logs} />
       </main>
       {/* END: MainContent */}
 
