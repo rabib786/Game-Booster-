@@ -1183,9 +1183,9 @@ function App() {
                 <button
                   onClick={handleSaveCustomProfile}
                   disabled={isSavingCustomProfile}
-                  className={`text-xs font-bold uppercase px-3 py-1.5 rounded border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white ${isSavingCustomProfile ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`text-xs font-bold uppercase px-3 py-1.5 rounded border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 flex items-center space-x-1 ${isSavingCustomProfile ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isSavingCustomProfile ? 'Saving...' : 'Save Custom'}
+                  {isSavingCustomProfile ? <><Loader2 size={12} className="animate-spin" /><span>Saving...</span></> : <span>Save Custom</span>}
                 </button>
               )}
             </div>
@@ -1401,9 +1401,9 @@ function App() {
                     <button
                       onClick={() => handleTweakGame(game.name)}
                       disabled={isTweaking}
-                      className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 flex items-center justify-center space-x-2 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {isTweaking ? 'Optimizing...' : `Optimize ${game.name}`}
+                      {isTweaking ? <><Loader2 size={16} className="animate-spin" /><span>Optimizing...</span></> : <span>Optimize {game.name}</span>}
                     </button>
                   </div>
                 ))
@@ -1538,9 +1538,9 @@ function App() {
                 <button
                   onClick={handleUpdateHotkeys}
                   disabled={isUpdatingHotkeys}
-                  className={`bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isUpdatingHotkeys ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:ring-offset-2 focus-visible:ring-offset-black ${isUpdatingHotkeys ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isUpdatingHotkeys ? 'Saving...' : 'Save Hotkeys'}
+                  {isUpdatingHotkeys ? <><Loader2 size={16} className="animate-spin" /><span>Saving...</span></> : <span>Save Hotkeys</span>}
                 </button>
               </div>
             </div>
@@ -1575,9 +1575,9 @@ function App() {
 
 {/* Output Console Box (moved from old design) */}
         <section className="mt-10 mb-8 border-t border-gray-800 pt-6">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Log</h2>
+          <h2 id="console-log-title" className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Log</h2>
           <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
-            <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1">
+            <div role="log" aria-live="polite" aria-labelledby="console-log-title" className="h-40 overflow-y-auto text-razer-green text-sm space-y-1">
               {logs.map((log, i) => (
                 <p key={i} className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
               ))}

@@ -8,3 +8,7 @@
 ## 2024-04-08 - Contextual Call-To-Actions in Empty States
 **Learning:** For empty states, putting a descriptive text that tells a user what to do in another part of the app is bad UX. Users respond significantly better to immediate, contextual CTA buttons that mirror main behaviors.
 **Action:** Always embed primary/secondary actions directly inside the empty state component instead of routing the user's attention away from the problem area.
+
+## 2024-04-09 - Accessible Live Regions for Non-Toast Feedback
+**Learning:** In desktop-like applications, appending logs to a visual console often acts as the primary feedback mechanism for background tasks (e.g., suspending services) instead of intrusive global toasts. Without `aria-live`, screen reader users miss this critical feedback entirely because the DOM update is silent.
+**Action:** Always add `role="log"` and `aria-live="polite"` (with an appropriate `aria-labelledby`) to append-only log containers to ensure non-visual users receive the same immediate contextual feedback as visual users.
