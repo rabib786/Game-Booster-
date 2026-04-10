@@ -1525,11 +1525,14 @@ def scan_games(force_refresh=False):
                                     continue
                                 stack.append(entry.path)
                             elif entry.is_file(follow_symlinks=False) and entry.name.lower().endswith(".exe"):
-                                seen_files += 1
                                 st = entry.stat(follow_symlinks=False)
                                 size = getattr(st, "st_size", 0) or 0
                                 if size < min_size_bytes:
                                     continue
+
+                                # Count only "real" exe candidates to avoid tiny helpers
+                                # exhausting the scan budget and terminating early.
+                                seen_files += 1
                                 if size > best_size:
                                     best_size = size
                                     best_path = entry.path
