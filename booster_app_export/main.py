@@ -1394,97 +1394,240 @@ def scan_games(force_refresh=False):
     icons_dir = os.path.join("web", "icons")
     os.makedirs(icons_dir, exist_ok=True)
 
+    def _eel_log(msg: str):
+        try:
+            eel.add_log(msg)()
+        except Exception:
+            pass
+
+    def _safe_norm(p: str) -> str:
+        try:
+            return os.path.normpath(p)
+        except Exception:
+            return p
+
+    def _get_reg_value(root, key_path: str, value_name: str):
+        try:
+            key = winreg.OpenKey(root, key_path)
+            v, _ = winreg.QueryValueEx(key, value_name)
+            winreg.CloseKey(key)
+            return v
+        except Exception:
+            return None
+
+    def _steam_root_candidates():
+        """
+        Best-effort discovery of Steam install root across common registry keys and defaults.
+        """
+        candidates = []
+
+        # Primary: HKCU (most common)
+        v = _get_reg_value(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam", "SteamPath")
+        if isinstance(v, str) and v:
+            candidates.append(v)
+
+        # Alternate keys that appear on some systems
+        v = _get_reg_value(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath")
+        if isinstance(v, str) and v:
+            candidates.append(v)
+
+        # Typical defaults
+        candidates.extend([
+            r"C:\Program Files (x86)\Steam",
+            r"C:\Program Files\Steam",
+        ])
+
+        # De-dupe while preserving order
+        out = []
+        seen = set()
+        for c in candidates:
+            c = _safe_norm(c)
+            if c and c not in seen:
+                seen.add(c)
+                out.append(c)
+        return out
+
+    def _parse_steam_libraryfolders(steamapps_path: str):
+        """
+        Parse Steam's libraryfolders.vdf to discover additional library paths.
+        Supports both legacy and modern formats.
+        """
+        vdf_path = os.path.join(steamapps_path, "libraryfolders.vdf")
+        libs = []
+        try:
+            if not os.path.exists(vdf_path):
+                return libs
+            with open(vdf_path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+
+            # Modern format: "path" "D:\\SteamLibrary"
+            for m in re.finditer(r'"path"\s*"([^"]+)"', content, flags=re.IGNORECASE):
+                libs.append(m.group(1))
+
+            # Legacy format: "1" "D:\\SteamLibrary"
+            for m in re.finditer(r'"\d+"\s*"([A-Za-z]:\\\\[^"]+)"', content):
+                libs.append(m.group(1))
+        except Exception as e:
+            logger.info(f"Steam libraryfolders parse failed: {e}")
+        # Normalize / de-dupe
+        out = []
+        seen = set()
+        for p in libs:
+            p = _safe_norm(p)
+            if p and p not in seen:
+                seen.add(p)
+                out.append(p)
+        return out
+
+    def _pick_main_exe(game_dir: str):
+        """
+        Heuristic: pick the largest .exe within a bounded scan budget.
+        Avoids deep, unbounded recursion that can make Scan Games feel "stuck".
+        """
+        if not game_dir or not os.path.exists(game_dir):
+            return None
+
+        # Skip typical non-game folders
+        skip_dir_names = {
+            "redist", "redistributables", "commonredist", "_redist", "directx",
+            "vcredist", "support", "docs", "doc", "manual", "help", "easyanticheat",
+            "battleye", "anticheat", "installer", "installers"
+        }
+
+        # Hard limits so UI stays responsive
+        max_dirs = 400
+        max_files = 8000
+        min_size_bytes = 1_000_000  # skip tiny helper exes
+
+        best_path = None
+        best_size = -1
+        seen_dirs = 0
+        seen_files = 0
+
+        stack = [game_dir]
+        while stack:
+            d = stack.pop()
+            seen_dirs += 1
+            if seen_dirs > max_dirs or seen_files > max_files:
+                break
+
+            try:
+                base = os.path.basename(d).lower()
+                if base in skip_dir_names:
+                    continue
+                with os.scandir(d) as it:
+                    for entry in it:
+                        try:
+                            if entry.is_dir(follow_symlinks=False):
+                                # Avoid scanning very deep Unity/Unreal caches by name
+                                name = entry.name.lower()
+                                if name in skip_dir_names:
+                                    continue
+                                stack.append(entry.path)
+                            elif entry.is_file(follow_symlinks=False) and entry.name.lower().endswith(".exe"):
+                                seen_files += 1
+                                st = entry.stat(follow_symlinks=False)
+                                size = getattr(st, "st_size", 0) or 0
+                                if size < min_size_bytes:
+                                    continue
+                                if size > best_size:
+                                    best_size = size
+                                    best_path = entry.path
+                                if seen_files > max_files:
+                                    break
+                        except Exception:
+                            continue
+            except Exception:
+                continue
+
+        return best_path
+
     # --- 1. Steam Scan ---
     try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
-        steam_path, _ = winreg.QueryValueEx(key, "SteamPath")
-        steam_path = os.path.normpath(steam_path)
-        winreg.CloseKey(key)
+        steam_roots = _steam_root_candidates()
+        steam_libraries = []
 
-        steamapps_path = os.path.join(steam_path, "steamapps")
-        if os.path.exists(steamapps_path):
-            # ⚡ Bolt Optimization: Use os.scandir instead of os.listdir and os.walk
-            # to eliminate redundant os.path system calls and improve directory scanning speed.
-            with os.scandir(steamapps_path) as it:
-                for entry in it:
-                    if entry.is_file() and entry.name.endswith(".acf"):
-                        acf_path = entry.path
+        for root in steam_roots:
+            steamapps_path = os.path.join(root, "steamapps")
+            if not os.path.exists(steamapps_path):
+                continue
+
+            # Root library
+            if root not in steam_libraries:
+                steam_libraries.append(root)
+
+            # Additional libraries
+            for lib in _parse_steam_libraryfolders(steamapps_path):
+                if lib not in steam_libraries:
+                    steam_libraries.append(lib)
+
+        if steam_libraries:
+            _eel_log(f"Steam libraries detected: {len(steam_libraries)}")
+
+        for lib_root in steam_libraries:
+            steamapps_path = os.path.join(lib_root, "steamapps")
+            if not os.path.exists(steamapps_path):
+                continue
+
+            try:
+                with os.scandir(steamapps_path) as it:
+                    for entry in it:
+                        if not (entry.is_file() and entry.name.endswith(".acf")):
+                            continue
                         try:
-                            with open(acf_path, "r", encoding="utf-8") as f:
+                            with open(entry.path, "r", encoding="utf-8", errors="ignore") as f:
                                 content = f.read()
 
-                                name_match = re.search(r'"name"\s+"([^"]+)"', content)
-                                dir_match = re.search(r'"installdir"\s+"([^"]+)"', content)
-                                appid_match = re.search(r'"appid"\s+"([^"]+)"', content)
+                            name_match = re.search(r'"name"\s+"([^"]+)"', content)
+                            dir_match = re.search(r'"installdir"\s+"([^"]+)"', content)
+                            appid_match = re.search(r'"appid"\s+"([^"]+)"', content)
 
-                                if name_match and dir_match and appid_match:
-                                    title = name_match.group(1)
-                                    install_dir = dir_match.group(1)
-                                    appid = appid_match.group(1)
+                            if not (name_match and dir_match and appid_match):
+                                continue
 
-                                    game_dir = os.path.join(steamapps_path, "common", install_dir)
-                                    if not os.path.exists(game_dir):
-                                        continue
+                            title = name_match.group(1).strip()
+                            install_dir = dir_match.group(1).strip()
+                            appid = appid_match.group(1).strip()
 
-                                    main_exe = None
-                                    max_size = -1
+                            game_dir = os.path.join(steamapps_path, "common", install_dir)
+                            if not os.path.exists(game_dir):
+                                continue
 
-                                    # Recursive scan using os.scandir to avoid os.walk + os.path.getsize overhead
-                                    def _scan_for_exe(d_path):
-                                        nonlocal main_exe, max_size
-                                        subdirs = []
-                                        try:
-                                            with os.scandir(d_path) as exe_it:
-                                                for exe_entry in exe_it:
-                                                    try:
-                                                        if exe_entry.is_dir(follow_symlinks=False):
-                                                            subdirs.append(exe_entry.path)
-                                                        elif exe_entry.name.lower().endswith(".exe"):
-                                                            # Cache the stat result implicitly provided by os.scandir
-                                                            size = exe_entry.stat(follow_symlinks=False).st_size
-                                                            if size > max_size:
-                                                                max_size = size
-                                                                main_exe = exe_entry.path
-                                                    except Exception:
-                                                        pass
-                                        except Exception:
-                                            pass
+                            main_exe = _pick_main_exe(game_dir)
+                            if not main_exe:
+                                continue
 
-                                        for subdir in subdirs:
-                                            _scan_for_exe(subdir)
+                            exe_name = os.path.basename(main_exe)
+                            icon_filename = f"steam_{appid}.ico"
+                            icon_path_full = os.path.join(icons_dir, icon_filename)
 
-                                    _scan_for_exe(game_dir)
+                            if IconExtractor and not os.path.exists(icon_path_full):
+                                try:
+                                    extractor = IconExtractor(main_exe)
+                                    extractor.export_icon(icon_path_full)
+                                except Exception:
+                                    pass
 
-                                    if main_exe:
-                                        exe_name = os.path.basename(main_exe)
-                                        icon_filename = f"steam_{appid}.ico"
-                                        icon_path_full = os.path.join(icons_dir, icon_filename)
-
-                                        if IconExtractor and not os.path.exists(icon_path_full):
-                                            try:
-                                                extractor = IconExtractor(main_exe)
-                                                extractor.export_icon(icon_path_full)
-                                            except Exception:
-                                                pass
-
-                                        games.append({
-                                            "id": f"steam_{appid}",
-                                            "title": title,
-                                            "exe_path": main_exe,
-                                            "exe_name": exe_name,
-                                            "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
-                                            "profile": {
-                                                "high_priority": True,
-                                                "network_flush": True,
-                                                "power_plan": True,
-                                                "suspend_services": True,
-                                                "ram_purge": True
-                                            }
-                                        })
-                        except Exception:
-                            pass
-    except OSError:
-        pass
+                            games.append({
+                                "id": f"steam_{appid}",
+                                "title": title,
+                                "exe_path": main_exe,
+                                "exe_name": exe_name,
+                                "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
+                                "profile": {
+                                    "high_priority": True,
+                                    "network_flush": True,
+                                    "power_plan": True,
+                                    "suspend_services": True,
+                                    "ram_purge": True
+                                }
+                            })
+                        except Exception as e:
+                            logger.info(f"Steam manifest scan error: {e}")
+            except Exception as e:
+                logger.info(f"Steam scan error: {e}")
+    except Exception as e:
+        logger.info(f"Steam discovery failed: {e}")
 
     # --- 2. Epic Games Scan ---
     try:
@@ -1499,7 +1642,7 @@ def scan_games(force_refresh=False):
                 for entry in it:
                     if entry.is_file() and entry.name.endswith(".item"):
                         try:
-                            with open(entry.path, 'r', encoding='utf-8') as f:
+                            with open(entry.path, 'r', encoding='utf-8', errors='ignore') as f:
                                 data = json.load(f)
                                 title = data.get('DisplayName', '')
                                 install_loc = data.get('InstallLocation', '')
@@ -1534,10 +1677,10 @@ def scan_games(force_refresh=False):
                                                 "ram_purge": True
                                             }
                                         })
-                        except Exception:
-                            pass
-    except Exception:
-        pass
+                        except Exception as e:
+                            logger.info(f"Epic manifest parse error ({entry.name}): {e}")
+    except Exception as e:
+        logger.info(f"Epic scan failed: {e}")
 
     # --- 3. GOG Scan ---
     try:
@@ -1584,10 +1727,14 @@ def scan_games(force_refresh=False):
                     })
             except OSError:
                 pass
+            except Exception as e:
+                logger.info(f"GOG scan error: {e}")
 
         winreg.CloseKey(key)
     except OSError:
         pass
+    except Exception as e:
+        logger.info(f"GOG scan failed: {e}")
 
     _cached_games = games
     _last_scan_time = time.time()
