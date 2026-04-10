@@ -8,3 +8,7 @@
 ## 2024-04-08 - Contextual Call-To-Actions in Empty States
 **Learning:** For empty states, putting a descriptive text that tells a user what to do in another part of the app is bad UX. Users respond significantly better to immediate, contextual CTA buttons that mirror main behaviors.
 **Action:** Always embed primary/secondary actions directly inside the empty state component instead of routing the user's attention away from the problem area.
+
+## 2024-04-10 - Adding Accessibility to System Logs
+**Learning:** Components rendering dynamic application feedback like a System Console Log do not automatically inform screen readers when new entries are added, leaving out important status updates for actions that don't trigger global UI notifications.
+**Action:** Include `role="log"` and `aria-live="polite"` on the scrollable container so that screen readers announce these updates appropriately to users without being overly intrusive.

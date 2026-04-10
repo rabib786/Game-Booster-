@@ -111,7 +111,7 @@ const SystemConsole = React.memo(({ logs }: { logs: string[] }) => {
     <section className="mt-10 mb-8 border-t border-gray-800 pt-6">
       <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">System Console Log</h2>
       <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
-        <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1">
+        <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1" role="log" aria-live="polite">
           {logs.map((log, i) => (
             <p key={i} className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
           ))}
