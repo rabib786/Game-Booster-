@@ -12,3 +12,6 @@
 ## 2024-04-10 - Adding Accessibility to System Logs
 **Learning:** Components rendering dynamic application feedback like a System Console Log do not automatically inform screen readers when new entries are added, leaving out important status updates for actions that don't trigger global UI notifications.
 **Action:** Include `role="log"` and `aria-live="polite"` on the scrollable container so that screen readers announce these updates appropriately to users without being overly intrusive.
+## 2024-04-11 - Empty State Contextual CTAs
+**Learning:** Found a dead-end empty state pattern in the "Booster Prime" tab that only provided descriptive text ("Install a supported game...") instead of actionable guidance. This disrupts user flow and forces them to manually navigate away.
+**Action:** Always embed primary or secondary actions (like "Go to Library") directly inside empty state components to prevent navigation dead-ends and keep users engaged in the application flow.

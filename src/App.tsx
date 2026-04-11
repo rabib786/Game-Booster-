@@ -1447,10 +1447,15 @@ function App() {
                   </div>
                 ))
               ) : (
-                <div className="col-span-full text-center p-8 bg-panel-bg rounded border border-gray-800">
-                  <span className="text-3xl opacity-50 block mb-2">🎮</span>
-                  <p className="text-gray-400">No supported Booster Prime games found on this system.</p>
-                  <p className="text-sm text-gray-600 mt-2">Install a supported game to see optimization options here.</p>
+                <div className="col-span-full text-center p-8 bg-panel-bg rounded border border-gray-800 flex flex-col items-center">
+                  <span className="text-3xl opacity-50 block mb-2" aria-hidden="true">🎮</span>
+                  <p className="text-gray-400 mb-4">No supported Booster Prime games found on this system.</p>
+                  <button
+                    onClick={() => setCurrentTab('Library')}
+                    className="bg-razer-green hover:bg-green-500 text-black font-black py-2 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green"
+                  >
+                    Go to Library
+                  </button>
                 </div>
               )}
             </div>
