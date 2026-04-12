@@ -98,6 +98,13 @@ declare global {
   }
 }
 
+// ⚡ Bolt: Extract LogLine to prevent O(N) string checks and DOM reconciliations on every log append.
+const LogLine = React.memo(({ log }: { log: string }) => {
+  return (
+    <p className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
+  );
+});
+
 // ⚡ Bolt: Extract SystemConsole to prevent O(N) re-renders
 // The logs array grows indefinitely. Without React.memo, typing in text inputs or
 // switching tabs will force the entire list of elements to re-render.
@@ -114,7 +121,7 @@ const SystemConsole = React.memo(({ logs }: { logs: string[] }) => {
       <div className="bg-[#050505] border border-[#222] rounded-lg p-4 font-mono">
         <div className="h-40 overflow-y-auto text-razer-green text-sm space-y-1" role="log" aria-live="polite">
           {logs.map((log, i) => (
-            <p key={i} className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
+            <LogLine key={i} log={log} />
           ))}
           <div ref={logsEndRef} />
         </div>
