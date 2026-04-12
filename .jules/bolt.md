@@ -15,3 +15,6 @@
 ## 2024-04-09 - Memoizing Append-Only Logs
 **Learning:** When rendering append-only lists or logs (like system consoles) that grow indefinitely, extracting them into a separate `React.memo()` component is critical. Otherwise, unrelated, high-frequency global state updates (e.g., text inputs) will trigger expensive O(N) recalculations across the array on every render.
 **Action:** Extract growing log arrays into a dedicated `React.memo` component to isolate render loops.
+## 2024-04-12 - Virtualization with react-window Grid
+**Learning:** When using `react-window` to virtualize grids, the API for `FixedSizeGrid` does not accept `cellComponent` props (unlike some other virtualization libraries). Attempting to use them will cause React runtime crashes or TypeScript errors.
+**Action:** Always pass the custom cell renderer as the child of the `Grid` component (e.g., `<Grid>{Cell}</Grid>`), and pass all dynamic external data (like arrays or callbacks) through the `itemData` prop wrapped in `useMemo` to prevent stale closures and unnecessary re-renders.

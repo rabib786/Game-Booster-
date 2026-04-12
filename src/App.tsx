@@ -5,6 +5,7 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Settings, Play, X, Loader2 } from 'lucide-react';
+import { FixedSizeGrid as Grid } from 'react-window';
 import { callEel, isEelAvailable } from './api/eelClient';
 
 interface EelResponse {
@@ -987,16 +988,45 @@ function App() {
     });
   }, []);
 
-  const memoizedProcesses = useMemo(() => {
-    return liveProcesses.map((proc) => (
-      <ProcessItem
-        key={proc.pid}
-        proc={proc}
-        isSelected={selectedPidsSet.has(proc.pid)}
-        onToggle={handleToggleProcess}
-      />
-    ));
-  }, [liveProcesses, selectedPidsSet, handleToggleProcess]);
+  // ⚡ Bolt Optimization: Use react-window's FixedSizeGrid to virtualize the process list.
+  // This prevents rendering thousands of DOM nodes at once when listing all system processes.
+  // Determine dynamic column count based on typical viewport width constraints
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const columnCount = windowWidth >= 1024 ? 4 : windowWidth >= 768 ? 2 : 1;
+  const containerWidth = Math.min(windowWidth - 64, 1200); // 64px for padding
+  const columnWidth = containerWidth / columnCount;
+  const rowCount = Math.ceil(liveProcesses.length / columnCount);
+
+  const itemData = useMemo(() => ({
+    liveProcesses,
+    selectedPidsSet,
+    handleToggleProcess,
+    columnCount
+  }), [liveProcesses, selectedPidsSet, handleToggleProcess, columnCount]);
+
+  const Cell = useCallback(({ columnIndex, rowIndex, style, data }: { columnIndex: number; rowIndex: number; style: React.CSSProperties, data: typeof itemData }) => {
+    const processIndex = rowIndex * data.columnCount + columnIndex;
+    if (processIndex >= data.liveProcesses.length) {
+      return null;
+    }
+    const proc = data.liveProcesses[processIndex];
+    return (
+      <div style={{ ...style, padding: '0.5rem' }}>
+        <ProcessItem
+          proc={proc}
+          isSelected={data.selectedPidsSet.has(proc.pid)}
+          onToggle={data.handleToggleProcess}
+        />
+      </div>
+    );
+  }, []);
 
   const selectedProcesses = useMemo(() => {
     return liveProcesses.filter(p => selectedPidsSet.has(p.pid));
@@ -1405,8 +1435,19 @@ function App() {
               <span>▼</span>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-purpose="process-grid">
-            {memoizedProcesses}
+          <div data-purpose="process-grid" className="w-full">
+            <Grid
+              columnCount={columnCount}
+              columnWidth={columnWidth}
+              height={400}
+              rowCount={rowCount}
+              rowHeight={80}
+              width={containerWidth}
+              itemData={itemData}
+              className="custom-scrollbar"
+            >
+              {Cell}
+            </Grid>
           </div>
         </section>
         {/* END: ProcessesSection */}
