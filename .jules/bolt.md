@@ -18,3 +18,6 @@
 ## 2024-04-12 - Virtualization with react-window Grid
 **Learning:** When using `react-window` to virtualize grids, the API for `FixedSizeGrid` does not accept `cellComponent` props (unlike some other virtualization libraries). Attempting to use them will cause React runtime crashes or TypeScript errors.
 **Action:** Always pass the custom cell renderer as the child of the `Grid` component (e.g., `<Grid>{Cell}</Grid>`), and pass all dynamic external data (like arrays or callbacks) through the `itemData` prop wrapped in `useMemo` to prevent stale closures and unnecessary re-renders.
+## 2024-04-15 - Debouncing Window Resize Handlers
+**Learning:** React state updates inside a high-frequency event listener like `window.addEventListener('resize')` trigger synchronous, expensive re-renders on every pixel change, creating severe rendering bottlenecks, especially when paired with virtualization libraries (like `react-window`) that continuously recalculate layout based on window dimensions.
+**Action:** Always wrap state-updating logic inside `resize` or `scroll` listeners with a debounce or throttle mechanism (e.g., `setTimeout`) to batch render cycles and prevent blocking the main thread.
