@@ -263,11 +263,12 @@ class TestConfigAndGames(unittest.TestCase):
 
     @patch('main.scan_games')
     def test_get_prime_games(self, mock_scan):
-        mock_scan.return_value = [{"id": "1", "title": "Cyberpunk 2077"}, {"id": "2", "title": "Warzone"}]
+        mock_scan.return_value = [{"id": "1", "title": "Cyberpunk 2077®"}, {"id": "2", "title": "Call of Duty®: Warzone™"}]
         result = get_prime_games()
         self.assertEqual(len(result), 2)
         titles = [g['name'] for g in result]
-        self.assertIn("Cyberpunk 2077", titles)
+        self.assertIn("Cyberpunk 2077®", titles)
+        self.assertIn("Call of Duty®: Warzone™", titles)
 
 class TestServiceManagement(unittest.TestCase):
     @patch('subprocess.Popen')
