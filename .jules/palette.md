@@ -15,3 +15,6 @@
 ## 2024-04-11 - Empty State Contextual CTAs
 **Learning:** Found a dead-end empty state pattern in the "Booster Prime" tab that only provided descriptive text ("Install a supported game...") instead of actionable guidance. This disrupts user flow and forces them to manually navigate away.
 **Action:** Always embed primary or secondary actions (like "Go to Library") directly inside empty state components to prevent navigation dead-ends and keep users engaged in the application flow.
+## 2026-04-12 - Enforce Emoji Accessibility
+**Learning:** Screen readers announce purely decorative emojis, causing unnecessary noise for users relying on assistive technologies.
+**Action:** Always ensure purely visual emojis are wrapped in a span or element with `aria-hidden="true"`.

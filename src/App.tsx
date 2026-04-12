@@ -1092,7 +1092,7 @@ function App() {
           <div className="bg-[#111] border border-gray-700 rounded p-6 max-w-lg w-full shadow-2xl animate-fade-in">
             <div className="flex justify-between items-center mb-4">
               <h2 id="confirm-boost-title" className="text-xl font-bold text-white flex items-center space-x-2">
-                <span className="text-yellow-500">⚠️</span>
+                <span className="text-yellow-500" aria-hidden="true">⚠️</span>
                 <span>Confirm Process Termination</span>
               </h2>
               <button
@@ -1115,7 +1115,7 @@ function App() {
                   return (
                     <li key={p.pid} className="flex justify-between text-xs p-2 hover:bg-gray-900 rounded">
                       <div className="flex items-center space-x-2">
-                        {isRisky ? <span className="text-red-500" title="Risky Process">⚠️</span> : <span className="text-gray-500">📄</span>}
+                        {isRisky ? <span className="text-red-500" title="Risky Process" aria-hidden="true">⚠️</span> : <span className="text-gray-500" aria-hidden="true">📄</span>}
                         <span className={isRisky ? "text-red-400" : "text-gray-300"}>{p.name}</span>
                       </div>
                       <span className="text-gray-500">{p.memory_mb.toFixed(1)} MB</span>
@@ -1148,7 +1148,7 @@ function App() {
           <div className="animate-fade-in flex flex-col space-y-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-white flex items-center">
-                <span className="text-razer-green mr-3">📚</span> My Library
+                <span className="text-razer-green mr-3" aria-hidden="true">📚</span> My Library
               </h2>
               <button
                 onClick={() => handleScanGames(true)}
@@ -1161,7 +1161,7 @@ function App() {
 
             {installedGames.length === 0 ? (
               <div className="bg-panel-bg p-12 rounded border border-gray-800 text-center flex flex-col items-center justify-center space-y-4">
-                <span className="text-5xl opacity-50">🎮</span>
+                <span className="text-5xl opacity-50" aria-hidden="true">🎮</span>
                 <p className="text-gray-400 text-lg">No games found in your library.</p>
                 <button
                   onClick={() => handleScanGames(true)}
@@ -1184,7 +1184,7 @@ function App() {
                         {game.icon_path ? (
                           <img src={game.icon_path} alt={game.title} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-3xl opacity-70">🕹️</span>
+                          <span className="text-3xl opacity-70" aria-hidden="true">🕹️</span>
                         )}
                       </div>
                       <h3 className="text-white font-bold text-center w-full truncate px-2">{game.title}</h3>
@@ -1235,7 +1235,7 @@ function App() {
             <div className="relative w-16 h-16 flex items-center justify-center">
               <div className="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
               <div className="absolute inset-0 border-4 border-razer-green rounded-full" style={{ clipPath: 'polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%)' }}></div>
-              <span className="text-razer-green text-xl">⚡</span>
+              <span className="text-razer-green text-xl" aria-hidden="true">⚡</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">28 items will be optimized</h1>
@@ -1468,7 +1468,7 @@ function App() {
             <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-yellow-500 shadow-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6">
-                  <div className="text-yellow-500 text-3xl">🔥</div>
+                  <div className="text-yellow-500 text-3xl" aria-hidden="true">🔥</div>
                   <div>
                     <h1 className="text-2xl font-bold text-white">Booster Prime</h1>
                     <p className="text-sm text-gray-500 font-medium">Automatically apply the best competitive settings for popular games.</p>
@@ -1512,7 +1512,7 @@ function App() {
             <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-blue-500 shadow-lg" data-purpose="clean-system-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6">
-                  <div className="text-blue-500 text-3xl">🧹</div>
+                  <div className="text-blue-500 text-3xl" aria-hidden="true">🧹</div>
                   <div>
                     <h1 className="text-2xl font-bold text-white">System Cleaner</h1>
                     <p className="text-sm text-gray-500 font-medium">Reclaims disk space by thoroughly wiping temporary files.</p>
@@ -1560,7 +1560,7 @@ function App() {
             <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-purple-500 shadow-lg" data-purpose="startup-optimize-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6">
-                  <div className="text-purple-500 text-3xl">🚀</div>
+                  <div className="text-purple-500 text-3xl" aria-hidden="true">🚀</div>
                   <div>
                     <h1 className="text-2xl font-bold text-white">Startup Optimizer</h1>
                     <p className="text-sm text-gray-500 font-medium">Improves boot times by disabling non-essential applications.</p>
@@ -1739,7 +1739,7 @@ function App() {
 
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-black relative z-10">
-              <h2 id="summary-modal-title" className="text-white font-bold text-lg flex items-center"><span className="text-razer-green mr-2">📊</span> Session Summary</h2>
+              <h2 id="summary-modal-title" className="text-white font-bold text-lg flex items-center"><span className="text-razer-green mr-2" aria-hidden="true">📊</span> Session Summary</h2>
               <button aria-label="Close Summary"
                 onClick={() => setSessionSummary(null)}
                 className="text-gray-400 hover:text-white transition-colors p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green"
