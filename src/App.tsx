@@ -131,6 +131,19 @@ const SystemConsole = React.memo(({ logs }: { logs: string[] }) => {
 });
 
 // ⚡ Bolt: Extracted ProcessItem to prevent O(N) re-renders on every selection toggle
+const SelectedProcessItem = React.memo(({ proc }: { proc: ProcessInfo }) => {
+  const isRisky = proc.name.toLowerCase().includes('explorer.exe') || proc.name.toLowerCase().includes('system');
+  return (
+    <li className="flex justify-between text-xs p-2 hover:bg-gray-900 rounded">
+      <div className="flex items-center space-x-2">
+        {isRisky ? <span className="text-red-500" title="Risky Process" aria-hidden="true">⚠️</span> : <span className="text-gray-500" aria-hidden="true">📄</span>}
+        <span className={isRisky ? "text-red-400" : "text-gray-300"}>{proc.name}</span>
+      </div>
+      <span className="text-gray-500">{proc.memory_mb.toFixed(1)} MB</span>
+    </li>
+  );
+});
+
 const ProcessItem = React.memo(({
   proc,
   isSelected,
@@ -1117,18 +1130,9 @@ function App() {
 
             <div className="bg-black border border-gray-800 rounded max-h-60 overflow-y-auto mb-6 custom-scrollbar p-2">
               <ul className="space-y-1">
-                {selectedProcesses.map(p => {
-                  const isRisky = p.name.toLowerCase().includes('explorer.exe') || p.name.toLowerCase().includes('system');
-                  return (
-                    <li key={p.pid} className="flex justify-between text-xs p-2 hover:bg-gray-900 rounded">
-                      <div className="flex items-center space-x-2">
-                        {isRisky ? <span className="text-red-500" title="Risky Process" aria-hidden="true">⚠️</span> : <span className="text-gray-500" aria-hidden="true">📄</span>}
-                        <span className={isRisky ? "text-red-400" : "text-gray-300"}>{p.name}</span>
-                      </div>
-                      <span className="text-gray-500">{p.memory_mb.toFixed(1)} MB</span>
-                    </li>
-                  );
-                })}
+                {selectedProcesses.map(p => (
+                  <SelectedProcessItem key={p.pid} proc={p} />
+                ))}
               </ul>
             </div>
 
