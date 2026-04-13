@@ -326,7 +326,7 @@ function App() {
       const fetchProcesses = async () => {
         if (isEelAvailable()) {
           try {
-            const procs = await window.eel.get_live_processes()();
+            const procs = await callEel<[], any>('get_live_processes');
             setLiveProcesses(procs);
             // Auto-select top processes if none selected yet, or just select all by default
             if (selectedPids.length === 0 && procs.length > 0) {
@@ -361,7 +361,7 @@ function App() {
         // Fetch supported games dynamically from the Python backend
         if (isEelAvailable()) {
           try {
-            const games = await window.eel.get_prime_games()();
+            const games = await callEel<[], any>('get_prime_games');
             setPrimeGames(games);
           } catch (error) {
             console.error(`Error fetching Prime games: ${error}`);
@@ -401,7 +401,7 @@ function App() {
     addLog(`Starting launch sequence for ${game.title}...`);
     try {
       if (isEelAvailable()) {
-        const response = await window.eel.launch_game(game.id, game.profile, game.exe_path, game.exe_name)();
+        const response = await callEel<[any, any, any, any], any>('launch_game', game.id, game.profile, game.exe_path, game.exe_name);
         if (response.status === 'success') {
           addLog(`Launch success: ${response.details}`);
 
@@ -427,7 +427,7 @@ function App() {
     addLog('Scanning for installed games...');
     if (isEelAvailable()) {
       try {
-        const games = await window.eel.scan_games(forceRefresh)();
+        const games = await callEel<[any], any>('scan_games', forceRefresh);
         setInstalledGames(games);
         addLog(`Found ${games.length} games.`);
       } catch (error) {
@@ -480,7 +480,7 @@ function App() {
     addLog(`Setting tray mode to ${newMode ? 'Enabled' : 'Disabled'}...`);
     if (window.eel && window.eel.toggle_tray_mode) {
       try {
-        const response = await window.eel.toggle_tray_mode(newMode)();
+        const response = await callEel<[any], any>('toggle_tray_mode', newMode);
         if (response.status === 'success') {
           setIsTrayActive(newMode);
           addLog(response.message);
@@ -504,7 +504,7 @@ function App() {
     addLog('Toggling performance overlay...');
     if (isEelAvailable()) {
       try {
-        const response = await window.eel.toggle_overlay()();
+        const response = await callEel<[], any>('toggle_overlay');
         addLog(response.message);
       } catch (error) {
         addLog(`Error toggling overlay: ${error}`);
@@ -536,7 +536,7 @@ function App() {
     addLog(`Initiating System Clean sequence${includeShaders ? ' (including shaders)' : ''}...`);
     if (window.eel && window.eel.full_system_clean) {
       try {
-        const result = await window.eel.full_system_clean(includeShaders)();
+        const result = await callEel<[any], any>('full_system_clean', includeShaders);
         if (result.status === 'success') {
           addLog(result.message);
           if (result.details) {
@@ -579,7 +579,7 @@ function App() {
     addLog('Initiating Startup Optimization sequence...');
     if (isEelAvailable()) {
       try {
-        const result = await window.eel.optimize_startup()();
+        const result = await callEel<[], any>('optimize_startup');
         if (result.status === 'success') {
           addLog(result.message);
           if (result.details) {
@@ -632,7 +632,7 @@ function App() {
 
     if (isEelAvailable()) {
       try {
-        const result = await window.eel.boost_game(selectedPids, profileName)();
+        const result = await callEel<[any, any], any>('boost_game', selectedPids, profileName);
         if (result.status === 'success') {
           addLog(result.message);
           if (result.details) {
@@ -702,7 +702,7 @@ function App() {
     addLog('Attempting to restart terminated applications...');
     if (window.eel && window.eel.undo_boost) {
       try {
-        const result = await window.eel.undo_boost()();
+        const result = await callEel<[], any>('undo_boost');
         if (result.status === 'success') {
           addLog(result.message);
           if (result.details) addLog(result.details);
@@ -745,10 +745,10 @@ function App() {
     addLog(`Saving custom profile with ${selectedAppNames.length} apps...`);
     if (window.eel && window.eel.save_custom_profile) {
       try {
-        const result = await window.eel.save_custom_profile(selectedAppNames)();
+        const result = await callEel<[any], any>('save_custom_profile', selectedAppNames);
         if (result.status === 'success') {
           addLog(result.message);
-          const refreshed = await window.eel.get_boost_profiles()();
+          const refreshed = await callEel<[], any>('get_boost_profiles');
           setAvailableProfiles(refreshed);
         } else {
           addLog(`Error: ${result.message}`, true);
@@ -772,8 +772,8 @@ function App() {
       addLog(`Stopped monitoring ${targetExe}. Reverting priority...`);
       if (isEelAvailable()) {
         try {
-          await window.eel.stop_monitor()();
-          const summaryData = await window.eel.get_session_summary()();
+          await callEel<[], any>('stop_monitor');
+          const summaryData = await callEel<[], any>('get_session_summary');
           if (summaryData && summaryData.status === 'success') {
             addLog(summaryData.message);
             setSessionSummary({
@@ -805,7 +805,7 @@ function App() {
       addLog(`Started monitoring for ${targetExe}. Process priority will be elevated.`);
       if (isEelAvailable()) {
         try {
-          const result = await window.eel.start_monitor(targetExe)();
+          const result = await callEel<[any], any>('start_monitor', targetExe);
           if (result.status === 'success') {
             addLog(result.message);
           } else {
@@ -827,7 +827,7 @@ function App() {
     }
 
     if (isServicesSuspended) {
-      const res = await window.eel.restore_services()();
+      const res = await callEel<[], any>('restore_services');
       if (res.status === 'success') {
         addLog(res.message);
         setIsServicesSuspended(false);
@@ -835,7 +835,7 @@ function App() {
         addLog(`Error: ${res.message}`, true);
       }
     } else {
-      const res = await window.eel.suspend_services()();
+      const res = await callEel<[], any>('suspend_services');
       if (res.status === 'success') {
         addLog(res.message);
         setIsServicesSuspended(true);
@@ -851,7 +851,7 @@ function App() {
     addLog(`Applying Booster Prime settings for ${gameName}...`);
     if (isEelAvailable()) {
       try {
-        const result = await window.eel.tweak_game_settings(gameName)();
+        const result = await callEel<[any], any>('tweak_game_settings', gameName);
         if (result.status === 'success') {
           addLog(result.message);
           if (result.details) {
@@ -879,7 +879,7 @@ function App() {
     addLog('Initiating RAM Purge sequence...');
     if (isEelAvailable()) {
       try {
-        const result = await window.eel.purge_ram()();
+        const result = await callEel<[], any>('purge_ram');
         if (result.status === 'success') {
           addLog(result.message);
         } else {
@@ -912,7 +912,7 @@ function App() {
 
     if (isEelAvailable()) {
       try {
-        const result = await window.eel.set_power_plan(nextPlan)();
+        const result = await callEel<[any], any>('set_power_plan', nextPlan);
         if (result.status === 'success') {
           addLog(result.message);
         } else {
@@ -936,7 +936,7 @@ function App() {
     addLog(`Updating hotkeys...`);
     if (isEelAvailable()) {
       try {
-        const result = await window.eel.update_hotkeys(boostHotkey, overlayHotkey)();
+        const result = await callEel<[any, any], any>('update_hotkeys', boostHotkey, overlayHotkey);
         if (result.status === 'success') {
           addLog(result.message);
         } else {
@@ -961,7 +961,7 @@ function App() {
 
     if (isEelAvailable()) {
       try {
-        const result = await window.eel.flush_dns_and_reset()();
+        const result = await callEel<[], any>('flush_dns_and_reset');
         if (result.status === 'success') {
           addLog(result.message);
         } else {
