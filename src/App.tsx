@@ -1345,7 +1345,7 @@ function App() {
             </div>
             <button
               onClick={handleTogglePowerPlan}
-              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors ${isPowerPlanHigh ? 'bg-orange-900/50 text-orange-400 hover:bg-orange-900 border border-orange-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isPowerPlanHigh ? 'bg-orange-900/50 text-orange-400 hover:bg-orange-900 border border-orange-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
             >
               {isPowerPlanHigh ? 'Restore Balanced' : 'Enable High Perf.'}
             </button>
@@ -1360,7 +1360,7 @@ function App() {
             <button
               onClick={handleNetworkFlush}
               disabled={isFlushingNetwork}
-              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 flex items-center justify-center space-x-2 ${isFlushingNetwork ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 flex items-center justify-center space-x-2 ${isFlushingNetwork ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isFlushingNetwork ? <><Loader2 size={16} className="animate-spin" /><span>Flushing...</span></> : <span>Flush Network</span>}
             </button>
@@ -1383,7 +1383,7 @@ function App() {
             </div>
             <button
               onClick={handleToggleMonitor}
-              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors ${isMonitoring ? 'bg-red-900/50 text-red-400 hover:bg-red-900 border border-red-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isMonitoring ? 'bg-red-900/50 text-red-400 hover:bg-red-900 border border-red-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
             >
               {isMonitoring ? 'Stop Monitor' : 'Start Monitor'}
             </button>
@@ -1397,7 +1397,7 @@ function App() {
             </div>
             <button
               onClick={handleToggleServices}
-              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors ${isServicesSuspended ? 'bg-green-900/50 text-green-400 hover:bg-green-900 border border-green-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isServicesSuspended ? 'bg-green-900/50 text-green-400 hover:bg-green-900 border border-green-800' : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700'}`}
             >
               {isServicesSuspended ? 'Restore Services' : 'Suspend Services'}
             </button>
@@ -1412,7 +1412,7 @@ function App() {
             </div>
             <button
               onClick={handleToggleOverlay}
-              className="w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
+              className="w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
             >
               Toggle Overlay
             </button>
@@ -1427,7 +1427,7 @@ function App() {
             <button
               onClick={handlePurgeRam}
               disabled={isPurging}
-              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 flex items-center justify-center space-x-2 ${isPurging ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 flex items-center justify-center space-x-2 ${isPurging ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isPurging ? <><Loader2 size={16} className="animate-spin" /><span>Purging...</span></> : <span>Purge RAM</span>}
             </button>
