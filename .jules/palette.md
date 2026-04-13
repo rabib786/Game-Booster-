@@ -18,3 +18,6 @@
 ## 2026-04-12 - Enforce Emoji Accessibility
 **Learning:** Screen readers announce purely decorative emojis, causing unnecessary noise for users relying on assistive technologies.
 **Action:** Always ensure purely visual emojis are wrapped in a span or element with `aria-hidden="true"`.
+## 2024-05-18 - Added keyboard focus to interactive dashboard cards
+**Learning:** Secondary dashboard cards (like "Enhanced Tools") often lack explicit `focus-visible` states compared to primary action buttons, making keyboard navigation difficult for power users and screen reader users since default browser outlines are invisible on dark themes.
+**Action:** Always ensure any `<button>` within a dashboard card includes explicit `focus-visible` utility classes that match the application's global focus styles (e.g., `focus-visible:ring-razer-green`).
