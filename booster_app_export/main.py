@@ -989,8 +989,10 @@ def tweak_game_settings(game_name):
 
     tweaks_applied = []
 
+    clean_name = _clean_game_title(game_name)
+
     # We will simulate paths for Warzone and Cyberpunk 2077 based on standard UE4/custom engine patterns
-    if game_name.lower() in ('warzone', 'call of duty: warzone'):
+    if clean_name in ('warzone', 'callofdutywarzone'):
         # Simulated path for Warzone
         config_path = os.path.join(os.environ.get('USERPROFILE', ''), 'Documents', 'Call of Duty Modern Warfare', 'players', 'adv_options.ini')
         if not os.path.exists(os.path.dirname(config_path)):
@@ -1010,7 +1012,7 @@ def tweak_game_settings(game_name):
         except Exception as e:
             return {"status": "error", "message": f"Failed to tweak Warzone settings: {e}"}
 
-    elif game_name.lower() == 'cyberpunk 2077':
+    elif clean_name == 'cyberpunk2077':
         # Simulated path for Cyberpunk 2077
         config_path = os.path.join(local_app_data, 'CD Projekt Red', 'Cyberpunk 2077', 'UserSettings.json')
         if not os.path.exists(os.path.dirname(config_path)):
