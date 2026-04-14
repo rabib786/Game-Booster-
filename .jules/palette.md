@@ -21,3 +21,7 @@
 ## 2024-05-18 - Added keyboard focus to interactive dashboard cards
 **Learning:** Secondary dashboard cards (like "Enhanced Tools") often lack explicit `focus-visible` states compared to primary action buttons, making keyboard navigation difficult for power users and screen reader users since default browser outlines are invisible on dark themes.
 **Action:** Always ensure any `<button>` within a dashboard card includes explicit `focus-visible` utility classes that match the application's global focus styles (e.g., `focus-visible:ring-razer-green`).
+
+## 2024-05-19 - Improve Tab Navigation Accessibility
+**Learning:** Custom tab navigation built with standard `<nav>` and `<button>` elements lacks implicit semantics. Screen readers will not announce the structure as a tabbed interface or indicate which tab is active, leading to confusing navigation for visually impaired users.
+**Action:** Always add explicit ARIA roles (`role="tablist"`, `role="tab"`) and state attributes (`aria-selected`) to custom tab components to ensure they behave semantically like native tabs.
