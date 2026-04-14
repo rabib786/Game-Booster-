@@ -25,3 +25,6 @@
 ## 2024-04-16 - Prevent O(N) Inline Re-renders in React Arrays
 **Learning:** When rendering arrays containing conditional, computationally heavy operations (like mapping process arrays and executing `string.toLowerCase().includes()` to find specific elements), placing this logic directly inside the `.map()` loop creates an O(N) recalculation on every render.
 **Action:** Extract list items with inline calculations into standalone `React.memo()` components. This isolates the operations and prevents redundant executions across the entire list when unrelated state causes the parent component to reconcile.
+## 2024-04-14 - Backend psutil.process_iter optimization
+**Learning:** `psutil.process_iter(['name'])` or `psutil.process_iter(['pid', 'name'])` is actually SLOWER (~35-50%) than calling `psutil.process_iter()` and manually accessing `proc.pid` and `proc.name()` inside the loop for the processes we actually care about. The overhead of bulk-fetching attributes for all processes via the `['name']` array parameter outweighs the benefit if we filter things out or if we only need a few attributes.
+**Action:** Replace `psutil.process_iter(['pid', 'name'])` and `psutil.process_iter(['name'])` with `psutil.process_iter()` and manual attribute access in `get_live_processes`, `monitor_game_process`, and `boost_game` fallback.

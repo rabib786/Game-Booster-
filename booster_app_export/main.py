@@ -477,9 +477,9 @@ def monitor_game_process():
         bg_procs_to_adjust = []
 
         # ⚡ Bolt Optimization: Consolidate psutil.process_iter calls into a single pass
-        for proc in psutil.process_iter(['name']):
+        for proc in psutil.process_iter():
             try:
-                name = proc.info.get('name')
+                name = proc.name()
                 if not name:
                     continue
                 name_lower = name.lower()
@@ -780,10 +780,10 @@ def boost_game(pids_to_kill=None, profile_name=None):
     else:
         # Fallback to full system scan if no explicit targets are given
         # ⚡ Bolt Optimization: Lazy load memory_info to avoid expensive attribute retrieval for skipped processes
-        for proc in psutil.process_iter(['pid', 'name']):
+        for proc in psutil.process_iter():
             try:
-                pid = proc.info.get('pid')
-                name = proc.info.get('name')
+                pid = proc.pid
+                name = proc.name()
 
                 if pid in whitelist_pids:
                     continue
@@ -1826,10 +1826,10 @@ def get_live_processes():
     # Critical Windows System Processes
     # ⚡ Bolt Optimization: Use O(1) set for faster lookups inside the loop
     # ⚡ Bolt Optimization: Lazy load memory_info to avoid expensive attribute retrieval for skipped processes
-    for proc in psutil.process_iter(['pid', 'name']):
+    for proc in psutil.process_iter():
         try:
-            pid = proc.info.get('pid')
-            name = proc.info.get('name')
+            pid = proc.pid
+            name = proc.name()
 
             if not pid or not name:
                 continue
