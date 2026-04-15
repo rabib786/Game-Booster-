@@ -440,11 +440,11 @@ function App() {
   }, []);
 
   const addLogFromPython = (msg: string) => {
-    setLogs(prev => [...prev, `> ${msg}`]);
+    setLogs(prev => [...prev.slice(-99), `> ${msg}`]);
   };
 
   const addLog = useCallback((msg: string, isError = false) => {
-    setLogs(prev => [...prev, `> ${msg}`]);
+    setLogs(prev => [...prev.slice(-99), `> ${msg}`]);
   }, []);
 
 

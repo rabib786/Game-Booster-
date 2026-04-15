@@ -36,3 +36,7 @@
 ## 2024-05-16 - Pre-compiling Regex for Hot Paths
 **Learning:** Pre-compiling regular expressions at the module level in Python provides a significant performance boost (~40%) when those expressions are used inside hot loops, such as directory scanning for Steam games or string normalization. It eliminates the overhead of repeated compilation and internal cache lookups.
 **Action:** Extract all static regex patterns from loops and function bodies into module-level constants (prefixed with `RE_`) in `booster_app_export/main.py`.
+
+## 2024-05-17 - Cap append-only arrays to prevent O(N) memory scaling
+**Learning:** When managing console logs or append-only arrays in React state that can grow indefinitely, unbounded appends cause an O(N) array copy operation and continuous memory leakage that scales with application lifetime.
+**Action:** Always cap the array size (e.g., to the latest 100 entries using `.slice()`) when updating the state.
