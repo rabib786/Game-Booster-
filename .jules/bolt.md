@@ -28,3 +28,7 @@
 ## 2024-04-14 - Backend psutil.process_iter optimization
 **Learning:** `psutil.process_iter(['name'])` or `psutil.process_iter(['pid', 'name'])` is actually SLOWER (~35-50%) than calling `psutil.process_iter()` and manually accessing `proc.pid` and `proc.name()` inside the loop for the processes we actually care about. The overhead of bulk-fetching attributes for all processes via the `['name']` array parameter outweighs the benefit if we filter things out or if we only need a few attributes.
 **Action:** Replace `psutil.process_iter(['pid', 'name'])` and `psutil.process_iter(['name'])` with `psutil.process_iter()` and manual attribute access in `get_live_processes`, `monitor_game_process`, and `boost_game` fallback.
+
+## 2024-05-15 - React.memo for large mapped lists
+**Learning:** Extracting complex mapped UI components (like `GameCard`) into `React.memo` and wrapping their callback handlers (`handleLaunchGame`, `addLog`) with `useCallback` prevents O(N) re-renders when global application state (like the `logs` array) updates frequently due to backend polling. Lazy loading images also improves rendering speed for offscreen elements.
+**Action:** Always memoize individual items in large mapped arrays and ensure any functions passed to them as props are wrapped in `useCallback` to preserve referential equality and keep memoization effective.
