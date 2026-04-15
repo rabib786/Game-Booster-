@@ -49,6 +49,15 @@ try:
 except ImportError:
     winreg = None
 
+# ⚡ Bolt Optimization: Pre-compile regex patterns for better performance in loops
+RE_MB = re.compile(r'([\d.]+)\s*MB')
+RE_CLEAN_TITLE = re.compile(r'[^a-z0-9]')
+RE_STEAM_PATH = re.compile(r'"path"\s*"([^"]+)"', flags=re.IGNORECASE)
+RE_STEAM_LEGACY_PATH = re.compile(r'"\d+"\s*"([A-Za-z]:\\\\[^"]+)"')
+RE_STEAM_NAME = re.compile(r'"name"\s+"([^"]+)"')
+RE_STEAM_DIR = re.compile(r'"installdir"\s+"([^"]+)"')
+RE_STEAM_APPID = re.compile(r'"appid"\s+"([^"]+)"')
+
 # Initialize Eel with the 'web' folder
 eel.init('web')
 
@@ -944,7 +953,7 @@ def full_system_clean(include_shaders: bool = False):
     if res_sys.get('status') == 'success':
         try:
             msg = res_sys.get('message', '')
-            match = re.search(r'([\d.]+)\s*MB', msg)
+            match = RE_MB.search(msg)
             if match:
                 sys_mb = float(match.group(1))
                 total_freed_mb += sys_mb
@@ -957,7 +966,7 @@ def full_system_clean(include_shaders: bool = False):
         if res_shaders.get('status') == 'success':
             try:
                 msg = res_shaders.get('message', '')
-                match = re.search(r'([\d.]+)\s*MB', msg)
+                match = RE_MB.search(msg)
                 if match:
                     shader_mb = float(match.group(1))
                     total_freed_mb += shader_mb
@@ -1318,8 +1327,7 @@ SUPPORTED_PRIME_GAMES = {
 }
 
 def _clean_game_title(title):
-    import re
-    return re.sub(r'[^a-z0-9]', '', title.lower())
+    return RE_CLEAN_TITLE.sub('', title.lower())
 
 # ⚡ Bolt Optimization: Pre-calculate lowercase mapping at module level for O(N) complexity
 _SUPPORTED_PRIME_GAMES_LOWER = {_clean_game_title(k): v for k, v in SUPPORTED_PRIME_GAMES.items()}
@@ -1467,11 +1475,11 @@ def scan_games(force_refresh=False):
                 content = f.read()
 
             # Modern format: "path" "D:\\SteamLibrary"
-            for m in re.finditer(r'"path"\s*"([^"]+)"', content, flags=re.IGNORECASE):
+            for m in RE_STEAM_PATH.finditer(content):
                 libs.append(m.group(1))
 
             # Legacy format: "1" "D:\\SteamLibrary"
-            for m in re.finditer(r'"\d+"\s*"([A-Za-z]:\\\\[^"]+)"', content):
+            for m in RE_STEAM_LEGACY_PATH.finditer(content):
                 libs.append(m.group(1))
         except Exception as e:
             logger.info(f"Steam libraryfolders parse failed: {e}")
@@ -1587,9 +1595,9 @@ def scan_games(force_refresh=False):
                             with open(entry.path, "r", encoding="utf-8", errors="ignore") as f:
                                 content = f.read()
 
-                            name_match = re.search(r'"name"\s+"([^"]+)"', content)
-                            dir_match = re.search(r'"installdir"\s+"([^"]+)"', content)
-                            appid_match = re.search(r'"appid"\s+"([^"]+)"', content)
+                            name_match = RE_STEAM_NAME.search(content)
+                            dir_match = RE_STEAM_DIR.search(content)
+                            appid_match = RE_STEAM_APPID.search(content)
 
                             if not (name_match and dir_match and appid_match):
                                 continue
