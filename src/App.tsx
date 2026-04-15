@@ -401,11 +401,17 @@ function App() {
   }, []);
 
   const addLogFromPython = (msg: string) => {
-    setLogs(prev => [...prev, `> ${msg}`]);
+    setLogs(prev => {
+      const next = [...prev, `> ${msg}`];
+      return next.length > 100 ? next.slice(next.length - 100) : next;
+    });
   };
 
   const addLog = (msg: string, isError = false) => {
-    setLogs(prev => [...prev, `> ${msg}`]);
+    setLogs(prev => {
+      const next = [...prev, `> ${msg}`];
+      return next.length > 100 ? next.slice(next.length - 100) : next;
+    });
   };
 
 

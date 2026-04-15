@@ -28,3 +28,6 @@
 ## 2024-04-14 - Backend psutil.process_iter optimization
 **Learning:** `psutil.process_iter(['name'])` or `psutil.process_iter(['pid', 'name'])` is actually SLOWER (~35-50%) than calling `psutil.process_iter()` and manually accessing `proc.pid` and `proc.name()` inside the loop for the processes we actually care about. The overhead of bulk-fetching attributes for all processes via the `['name']` array parameter outweighs the benefit if we filter things out or if we only need a few attributes.
 **Action:** Replace `psutil.process_iter(['pid', 'name'])` and `psutil.process_iter(['name'])` with `psutil.process_iter()` and manual attribute access in `get_live_processes`, `monitor_game_process`, and `boost_game` fallback.
+## 2026-04-15 - Cap Append-Only Log Arrays to Prevent O(N) Array Copy and Memory Leaks
+**Learning:** When managing append-only arrays in React state that can grow indefinitely (like console logs), continuously appending using spread syntax (`[...prev, newLog]`) creates an O(N) array copy operation on every render and results in a memory leak.
+**Action:** Cap the array size in state setter callbacks (e.g., `next.length > 100 ? next.slice(next.length - 100) : next`) to bound memory usage and prevent O(N) degradation over long sessions.
