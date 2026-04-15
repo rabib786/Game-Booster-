@@ -23,7 +23,7 @@ sys.modules['pynvml'] = MagicMock()
 # 2. Import main and functions to test
 import main
 from main import (
-    clean_system, full_system_clean, set_power_plan,
+    clean_system, clean_shader_caches, full_system_clean, set_power_plan,
     flush_dns_and_reset, validate_config, get_prime_games,
     suspend_services, restore_services, purge_ram
 )
@@ -171,6 +171,43 @@ class TestCleanSystem(unittest.TestCase):
         self.assertEqual(result['status'], 'success')
         self.assertIn("15.00 MB", result['message'])
         self.assertIn("System Temp: 10.00 MB | Cleaned GPU Shaders and Prefetch files: 5.00 MB", result['details'])
+
+class TestCleanShaderCaches(unittest.TestCase):
+    @patch('os.environ.get')
+    @patch('main._delete_target_dirs')
+    def test_clean_shader_caches_success(self, mock_delete, mock_environ_get):
+        def environ_side_effect(key, default=''):
+            if key == 'LOCALAPPDATA': return 'C:\\Users\\User\\AppData\\Local'
+            if key == 'WINDIR': return 'C:\\Windows'
+            return default
+        mock_environ_get.side_effect = environ_side_effect
+        mock_delete.return_value = 1024 * 1024 * 5 # 5MB
+
+        result = clean_shader_caches()
+
+        self.assertEqual(result['status'], 'success')
+        self.assertIn("Cleaned 5.00 MB of Shader/Prefetch Junk.", result['message'])
+        self.assertIn("Cleaned GPU Shaders and Prefetch files: 5.00 MB", result['details'])
+
+        expected_dirs = [
+            os.path.join('C:\\Windows', 'Prefetch'),
+            os.path.join('C:\\Users\\User\\AppData\\Local', 'NVIDIA', 'DXCache'),
+            os.path.join('C:\\Users\\User\\AppData\\Local', 'NVIDIA', 'GLCache'),
+            os.path.join('C:\\Users\\User\\AppData\\Local', 'AMD', 'DxCache')
+        ]
+        mock_delete.assert_called_once_with(expected_dirs)
+
+    @patch('os.environ.get')
+    @patch('main._delete_target_dirs')
+    def test_clean_shader_caches_empty(self, mock_delete, mock_environ_get):
+        mock_environ_get.return_value = ''
+        mock_delete.return_value = 0
+
+        result = clean_shader_caches()
+
+        self.assertEqual(result['status'], 'success')
+        self.assertIn("Cleaned 0.00 MB of Shader/Prefetch Junk.", result['message'])
+        self.assertEqual(result['details'], "No matching caches found.")
 
 class TestPowerPlanAndNetwork(unittest.TestCase):
     @patch('subprocess.run')
