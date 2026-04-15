@@ -178,7 +178,7 @@ class TestPowerPlanAndNetwork(unittest.TestCase):
         mock_run.return_value.returncode = 0
         result = set_power_plan('high_performance')
         mock_run.assert_called_with(
-            ['powercfg', '/setactive', '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'],
+            [main._POWERCFG_EXE, '/setactive', '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'],
             capture_output=True,
             text=True,
             creationflags=0x08000000
@@ -187,7 +187,7 @@ class TestPowerPlanAndNetwork(unittest.TestCase):
 
         result = set_power_plan('balanced')
         mock_run.assert_called_with(
-            ['powercfg', '/setactive', '381b4222-f694-41f0-9685-ff5bb260df2e'],
+            [main._POWERCFG_EXE, '/setactive', '381b4222-f694-41f0-9685-ff5bb260df2e'],
             capture_output=True,
             text=True,
             creationflags=0x08000000
@@ -200,10 +200,10 @@ class TestPowerPlanAndNetwork(unittest.TestCase):
         result = flush_dns_and_reset()
         self.assertEqual(mock_run.call_count, 4)
         calls = mock_run.call_args_list
-        self.assertEqual(calls[0][0][0], ['ipconfig', '/release'])
-        self.assertEqual(calls[1][0][0], ['ipconfig', '/renew'])
-        self.assertEqual(calls[2][0][0], ['ipconfig', '/flushdns'])
-        self.assertEqual(calls[3][0][0], ['netsh', 'int', 'ip', 'reset'])
+        self.assertEqual(calls[0][0][0], [main._IPCONFIG_EXE, '/release'])
+        self.assertEqual(calls[1][0][0], [main._IPCONFIG_EXE, '/renew'])
+        self.assertEqual(calls[2][0][0], [main._IPCONFIG_EXE, '/flushdns'])
+        self.assertEqual(calls[3][0][0], [main._NETSH_EXE, 'int', 'ip', 'reset'])
 
 class TestConfigAndGames(unittest.TestCase):
     def test_validate_config_recovers_invalid_shape(self):
@@ -285,6 +285,9 @@ class TestServiceManagement(unittest.TestCase):
         self.assertEqual(result['status'], 'success')
         self.assertIn('Suspended 3 non-essential services.', result['message'])
         self.assertEqual(main.suspended_services_list, ['Spooler', 'SysMain', 'DiagTrack'])
+        # Verify absolute path use
+        for call in mock_popen.call_args_list:
+            self.assertEqual(call[0][0][0], main._SC_EXE)
 
     @patch('subprocess.Popen')
     def test_suspend_services_exception(self, mock_popen):
@@ -319,6 +322,9 @@ class TestServiceManagement(unittest.TestCase):
         self.assertIn('Restored 2 services.', result['message'])
         self.assertEqual(main.suspended_services_list, [])
         self.assertEqual(mock_popen.call_count, 2)
+        # Verify absolute path use
+        for call in mock_popen.call_args_list:
+            self.assertEqual(call[0][0][0], main._SC_EXE)
 
     @patch('subprocess.Popen')
     def test_restore_services_partial_failure(self, mock_popen):

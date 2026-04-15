@@ -49,6 +49,13 @@ try:
 except ImportError:
     winreg = None
 
+# System executable paths for security
+_SYSTEM_ROOT = os.environ.get('SystemRoot', 'C:\\Windows')
+_SC_EXE = os.path.join(_SYSTEM_ROOT, 'System32', 'sc.exe')
+_POWERCFG_EXE = os.path.join(_SYSTEM_ROOT, 'System32', 'powercfg.exe')
+_IPCONFIG_EXE = os.path.join(_SYSTEM_ROOT, 'System32', 'ipconfig.exe')
+_NETSH_EXE = os.path.join(_SYSTEM_ROOT, 'System32', 'netsh.exe')
+
 # Initialize Eel with the 'web' folder
 eel.init('web')
 
@@ -629,7 +636,7 @@ def suspend_services():
     for service in services_to_suspend:
         try:
             # CREATE_NO_WINDOW is 0x08000000
-            p = subprocess.Popen(['sc', 'stop', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
+            p = subprocess.Popen([_SC_EXE, 'stop', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
             processes.append((service, p))
         except Exception:
             pass
@@ -661,7 +668,7 @@ def restore_services():
     # ⚡ Bolt Optimization: Batch system calls using subprocess.Popen
     for service in suspended_services_list:
         try:
-            p = subprocess.Popen(['sc', 'start', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
+            p = subprocess.Popen([_SC_EXE, 'start', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
             processes.append((service, p))
         except Exception:
             pass
@@ -1103,7 +1110,7 @@ def set_power_plan(plan_type):
         else:
             return {"status": "error", "message": "Invalid power plan type."}
 
-        result = subprocess.run(['powercfg', '/setactive', guid], capture_output=True, text=True, creationflags=0x08000000)
+        result = subprocess.run([_POWERCFG_EXE, '/setactive', guid], capture_output=True, text=True, creationflags=0x08000000)
 
         if result.returncode == 0:
             plan_name = "High Performance" if plan_type == 'high_performance' else "Balanced"
@@ -1120,10 +1127,10 @@ def flush_dns_and_reset():
     """
     try:
         commands = [
-            ['ipconfig', '/release'],
-            ['ipconfig', '/renew'],
-            ['ipconfig', '/flushdns'],
-            ['netsh', 'int', 'ip', 'reset']
+            [_IPCONFIG_EXE, '/release'],
+            [_IPCONFIG_EXE, '/renew'],
+            [_IPCONFIG_EXE, '/flushdns'],
+            [_NETSH_EXE, 'int', 'ip', 'reset']
         ]
 
         for cmd in commands:
