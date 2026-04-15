@@ -1,1 +1,20 @@
-{"user_preferences": {"tray_active": true}}
+{
+    "boost_profiles": {
+        "Aggressive": [
+            "spotify.exe",
+            "discord.exe",
+            "chrome.exe",
+            "msedge.exe",
+            "slack.exe",
+            "teams.exe",
+            "steamwebhelper.exe",
+            "epicgameslauncher.exe",
+            "onedrive.exe"
+        ],
+        "Conservative": [],
+        "Custom": []
+    },
+    "user_preferences": {
+        "tray_active": true
+    }
+}
