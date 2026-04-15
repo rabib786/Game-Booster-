@@ -1205,7 +1205,7 @@ function App() {
               <button
                 onClick={() => handleScanGames(true)}
                 disabled={isScanning}
-                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games</span>}
               </button>
@@ -1218,7 +1218,7 @@ function App() {
                 <button
                   onClick={() => handleScanGames(true)}
                   disabled={isScanning}
-                  className={`mt-2 flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`mt-2 flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games Now</span>}
                 </button>
@@ -1283,7 +1283,7 @@ function App() {
                 <button
                   onClick={handleSaveCustomProfile}
                   disabled={isSavingCustomProfile}
-                  className={`text-xs font-bold uppercase px-3 py-1.5 rounded border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white ${isSavingCustomProfile ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`text-xs font-bold uppercase px-3 py-1.5 rounded border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isSavingCustomProfile ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isSavingCustomProfile ? 'Saving...' : 'Save Custom'}
                 </button>
@@ -1306,14 +1306,14 @@ function App() {
               <button
                 onClick={handleUndoBoost}
                 disabled={isUndoing}
-                className={`flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 border border-gray-700 ${isUndoing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 border border-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isUndoing ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isUndoing ? <><Loader2 size={16} className="animate-spin" /><span>Undoing...</span></> : <span>Undo Boost</span>}
               </button>
               <button
                 onClick={initiateBoost}
                 disabled={isBoosting}
-                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isBoosting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isBoosting ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isBoosting ? <><Loader2 size={16} className="animate-spin" /><span>Boosting...</span></> : <span>Boost Now</span>}
               </button>
@@ -1342,7 +1342,7 @@ function App() {
               <button
                 onClick={handleHyperBoost}
                 disabled={isHyperBoosting || isBoosting || isPurging || isFlushingNetwork}
-                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${(isHyperBoosting || isBoosting || isPurging || isFlushingNetwork) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${(isHyperBoosting || isBoosting || isPurging || isFlushingNetwork) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isHyperBoosting ? <><Loader2 size={16} className="animate-spin" /><span>HyperBoosting...</span></> : <span>Run HyperBoost</span>}
               </button>
@@ -1512,7 +1512,7 @@ function App() {
                     <button
                       onClick={() => handleTweakGame(game.name)}
                       disabled={isTweaking}
-                      className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-600 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {isTweaking ? 'Optimizing...' : `Optimize ${game.name}`}
                     </button>
@@ -1545,7 +1545,7 @@ function App() {
                 <button
                   onClick={handleCleanSystem}
                   disabled={isCleaning}
-                  className={`flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)] ${isCleaning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${isCleaning ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isCleaning ? <><Loader2 size={16} className="animate-spin" /><span>Cleaning...</span></> : <span>Clean Now</span>}
                 </button>
@@ -1593,7 +1593,7 @@ function App() {
                 <button
                   onClick={handleOptimizeStartup}
                   disabled={isOptimizing}
-                  className={`flex items-center justify-center space-x-2 bg-purple-500 hover:bg-purple-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(168,85,247,0.3)] ${isOptimizing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`flex items-center justify-center space-x-2 bg-purple-500 hover:bg-purple-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(168,85,247,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${isOptimizing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isOptimizing ? <><Loader2 size={16} className="animate-spin" /><span>Optimizing...</span></> : <span>Optimize Now</span>}
                 </button>
@@ -1654,7 +1654,7 @@ function App() {
                 <button
                   onClick={handleUpdateHotkeys}
                   disabled={isUpdatingHotkeys}
-                  className={`bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] ${isUpdatingHotkeys ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isUpdatingHotkeys ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isUpdatingHotkeys ? 'Saving...' : 'Save Hotkeys'}
                 </button>
@@ -1746,7 +1746,7 @@ function App() {
             <div className="p-4 border-t border-gray-800 bg-black/50 flex justify-end">
               <button
                 onClick={() => setSelectedGameProfile(null)}
-                className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold py-2 px-6 rounded uppercase tracking-wider transition-colors"
+                className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold py-2 px-6 rounded uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green"
               >
                 Done
               </button>
@@ -1796,7 +1796,7 @@ function App() {
             <div className="p-4 border-t border-gray-800 bg-black/50 flex justify-center relative z-10">
               <button
                 onClick={() => setSessionSummary(null)}
-                className="bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all shadow-[0_0_15px_rgba(68,214,44,0.3)]"
+                className="bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-8 rounded-sm text-sm uppercase tracking-tighter transition-all shadow-[0_0_15px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green"
               >
                 Awesome
               </button>
