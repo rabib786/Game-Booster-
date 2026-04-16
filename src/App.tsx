@@ -250,7 +250,7 @@ const TelemetryDashboard = React.memo(() => {
   return (
     <section className="mb-10 bg-panel-bg p-6 rounded-sm border border-gray-800 shadow-lg" data-purpose="telemetry-dashboard">
       <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-6 flex items-center">
-        <span className="text-razer-green mr-2 animate-pulse">●</span> Live Telemetry
+        <span className="text-razer-green mr-2 animate-pulse" aria-hidden="true">●</span> Live Telemetry
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* CPU */}
@@ -1128,7 +1128,7 @@ function App() {
             onClick={() => handleTabStep(-1)}
             className="hover:text-white focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1"
           >
-            &lt;
+            <span aria-hidden="true">&lt;</span>
           </button>
           <button
             aria-label="Next tab"
@@ -1136,7 +1136,7 @@ function App() {
             onClick={() => handleTabStep(1)}
             className="hover:text-white focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1"
           >
-            &gt;
+            <span aria-hidden="true">&gt;</span>
           </button>
         </div>
         <button role="tab" aria-selected={currentTab === "Library"} className={`transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1 ${currentTab === "Library" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Library")}>Library</button>
@@ -1459,13 +1459,13 @@ function App() {
         <section>
           <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-2">
             <div className="flex items-center space-x-2">
-              <span className="text-gray-600">○</span>
+              <span className="text-gray-600" aria-hidden="true">○</span>
               <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Processes</h2>
               <span className="text-xs text-gray-500 lowercase ml-2">{selectedPids.length} out of {liveProcesses.length} items will be optimized during boost</span>
             </div>
             <div className="text-xs text-gray-500 flex items-center space-x-2 cursor-pointer hover:text-white transition-colors">
               <span>Memory Usage</span>
-              <span>▼</span>
+              <span aria-hidden="true">▼</span>
             </div>
           </div>
           <div data-purpose="process-grid" className="w-full">
