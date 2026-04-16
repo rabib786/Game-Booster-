@@ -440,11 +440,13 @@ function App() {
   }, []);
 
   const addLogFromPython = (msg: string) => {
-    setLogs(prev => [...prev, `> ${msg}`]);
+    // ⚡ Bolt Optimization: Cap console logs to prevent unbounded memory growth and O(N) array copy operations
+    setLogs(prev => [...prev.slice(-99), `> ${msg}`]);
   };
 
   const addLog = useCallback((msg: string, isError = false) => {
-    setLogs(prev => [...prev, `> ${msg}`]);
+    // ⚡ Bolt Optimization: Cap console logs to prevent unbounded memory growth and O(N) array copy operations
+    setLogs(prev => [...prev.slice(-99), `> ${msg}`]);
   }, []);
 
 
