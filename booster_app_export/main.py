@@ -1745,10 +1745,92 @@ def scan_games(force_refresh=False):
     except Exception as e:
         logger.info(f"GOG scan failed: {e}")
 
+    # Add Custom Games
+    config = load_config()
+    custom_games = config.get("custom_games", [])
+    for cg in custom_games:
+        if os.path.exists(cg.get("exe_path", "")):
+            games.append(cg)
+
     _cached_games = games
     _last_scan_time = time.time()
 
     return games
+
+
+@eel.expose
+def add_custom_game(exe_path, game_title):
+    config = load_config()
+    custom_games = config.setdefault("custom_games", [])
+
+    if not os.path.exists(exe_path):
+        return {"status": "error", "message": "Executable not found."}
+
+    exe_name = os.path.basename(exe_path)
+    import hashlib
+    appid = hashlib.md5(exe_path.encode()).hexdigest()[:8]
+    game_id = f"custom_{appid}"
+
+    # Extract icon
+    icons_dir = os.path.join("web", "icons")
+    os.makedirs(icons_dir, exist_ok=True)
+    icon_filename = f"{game_id}.ico"
+    icon_path_full = os.path.join(icons_dir, icon_filename)
+
+    if IconExtractor and not os.path.exists(icon_path_full):
+        try:
+            extractor = IconExtractor(exe_path)
+            extractor.export_icon(icon_path_full)
+        except Exception:
+            pass
+
+    new_game = {
+        "id": game_id,
+        "title": game_title,
+        "exe_path": exe_path,
+        "exe_name": exe_name,
+        "icon_path": f"/icons/{icon_filename}" if os.path.exists(icon_path_full) else None,
+        "profile": {
+            "high_priority": True,
+            "network_flush": False,
+            "power_plan": False,
+            "suspend_services": False,
+            "ram_purge": False
+        }
+    }
+
+    # Check if already exists
+    for i, g in enumerate(custom_games):
+        if g.get("id") == game_id:
+            custom_games[i] = new_game
+            break
+    else:
+        custom_games.append(new_game)
+
+    save_config(config)
+
+    # Invalidate cache
+    global _cached_games, _last_scan_time
+    _cached_games = None
+    _last_scan_time = 0
+
+    return {"status": "success", "message": "Custom game added successfully!"}
+
+
+@eel.expose
+def browse_for_game_exe():
+    from tkinter import filedialog
+
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes('-topmost', 1)
+    file_path = filedialog.askopenfilename(
+        parent=root,
+        title="Select Game Executable",
+        filetypes=[("Executable Files", "*.exe")]
+    )
+    root.destroy()
+    return file_path
 
 
 @eel.expose

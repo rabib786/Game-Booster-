@@ -79,6 +79,8 @@ interface Eel {
   update_hotkeys: (newBoost: string, newOverlay: string) => () => Promise<EelResponse>;
   get_prime_games: (forceRefresh?: boolean) => () => Promise<PrimeGame[]>;
   scan_games: (forceRefresh?: boolean) => () => Promise<Game[]>;
+  add_custom_game: (exePath: string, gameTitle: string) => () => Promise<EelResponse>;
+  browse_for_game_exe: () => () => Promise<string | null>;
   launch_game: (gameId: string, profile: GameProfile, exePath: string, exeName: string) => () => Promise<EelResponse>;
   get_live_processes: () => () => Promise<ProcessInfo[]>;
   get_boost_profiles: () => () => Promise<Record<string, string[]>>;
@@ -434,6 +436,31 @@ function App() {
     }
   };
 
+
+  const handleAddCustomGame = async () => {
+    if (isEelAvailable()) {
+      try {
+        const filePath = await callEel<[], string | null>('browse_for_game_exe');
+        if (filePath) {
+          const gameTitle = window.prompt("Enter a name for this custom game:", filePath.split(/[\/\\]/).pop()?.replace('.exe', '') || "Custom Game");
+          if (gameTitle) {
+            addLog(`Adding custom game: ${gameTitle}`);
+            const result = await callEel<[string, string], any>('add_custom_game', filePath, gameTitle);
+            if (result.status === 'success') {
+              addLog(result.message);
+              handleScanGames(true);
+            } else {
+              addLog(`Failed to add custom game: ${result.message}`, true);
+            }
+          }
+        }
+      } catch (error) {
+        addLog(`Error adding custom game: ${error}`, true);
+      }
+    } else {
+      addLog("Custom game addition requires backend connection.", true);
+    }
+  };
 
   const handleScanGames = async (forceRefresh = false) => {
     setIsScanning(true);
@@ -1163,26 +1190,42 @@ function App() {
               <h2 className="text-2xl font-bold text-white flex items-center">
                 <span className="text-razer-green mr-3" aria-hidden="true">📚</span> My Library
               </h2>
-              <button
-                onClick={() => handleScanGames(true)}
-                disabled={isScanning}
-                className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games</span>}
-              </button>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleAddCustomGame}
+                  className="flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors border border-gray-600"
+                >
+                  <span>+ Add Custom Game</span>
+                </button>
+                <button
+                  onClick={() => handleScanGames(true)}
+                  disabled={isScanning}
+                  className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games</span>}
+                </button>
+              </div>
             </div>
 
             {installedGames.length === 0 ? (
               <div className="bg-panel-bg p-12 rounded border border-gray-800 text-center flex flex-col items-center justify-center space-y-4">
                 <span className="text-5xl opacity-50" aria-hidden="true">🎮</span>
                 <p className="text-gray-400 text-lg">No games found in your library.</p>
-                <button
-                  onClick={() => handleScanGames(true)}
-                  disabled={isScanning}
-                  className={`mt-2 flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games Now</span>}
-                </button>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleAddCustomGame}
+                    className="mt-2 flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors border border-gray-600"
+                  >
+                    <span>+ Add Custom Game</span>
+                  </button>
+                  <button
+                    onClick={() => handleScanGames(true)}
+                    disabled={isScanning}
+                    className={`mt-2 flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games Now</span>}
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
