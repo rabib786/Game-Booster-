@@ -744,12 +744,12 @@ def boost_game(pids_to_kill=None, profile_name=None):
     trusted_targets.update(['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
 
     targets_list = profiles.get(profile_name, ['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
-    if profile_name == "Conservative" and pids_to_kill is None:
+    if profile_name == "Conservative" and not pids_to_kill:
         targets_list = [] # Only kill explicit selection
 
     targets_set = set([t.lower() for t in targets_list])
 
-    if pids_to_kill is not None:
+    if pids_to_kill:
         pids_to_kill = set(pids_to_kill)
 
     freed_memory = 0
@@ -759,7 +759,7 @@ def boost_game(pids_to_kill=None, profile_name=None):
     # Whitelist the current process and all its children
     whitelist_pids = _get_process_whitelist()
 
-    if pids_to_kill is not None:
+    if pids_to_kill:
         # ⚡ Bolt Optimization: Directly lookup targeted PIDs in O(K) instead of full O(N) system traversal
         for pid in pids_to_kill:
             if pid in whitelist_pids:
@@ -1312,9 +1312,7 @@ if keyboard:
     threading.Thread(target=init_hotkeys, daemon=True).start()
 
 
-if __name__ == '__main__':
-    # Start the app. port=0 automatically selects an available port.
-    eel.start('index.html', size=(1000, 650), port=0)
+
 
 
 
@@ -1876,3 +1874,11 @@ def get_live_processes():
     # Sort by memory usage descending
     processes.sort(key=lambda x: x["memory_mb"], reverse=True)
     return processes
+
+
+
+
+
+if __name__ == '__main__':
+    # Start the app. port=0 automatically selects an available port.
+    eel.start('index.html', size=(1000, 650), port=0)
