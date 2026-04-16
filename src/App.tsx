@@ -1163,7 +1163,7 @@ function App() {
                 className="text-gray-500 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green rounded p-1"
                 aria-label="Close dialog"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
 
@@ -1560,7 +1560,7 @@ function App() {
                   className="flex items-center space-x-3 text-sm text-gray-300 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
                 >
                   <div className={`w-5 h-5 flex items-center justify-center border rounded ${includeShaders ? 'bg-blue-500 border-blue-500 text-black' : 'border-gray-600 bg-black'}`}>
-                    {includeShaders && <span>✓</span>}
+                    {includeShaders && <span aria-hidden="true">✓</span>}
                   </div>
                   <span>Include GPU Shader Caches & Windows Prefetch files</span>
                 </button>
@@ -1569,7 +1569,7 @@ function App() {
                 <div className="mt-6 bg-blue-900/20 border border-blue-500/50 rounded p-4 animate-fade-in flex flex-col md:flex-row md:items-center md:justify-between">
                     <div>
                         <h4 className="text-blue-400 font-bold text-lg flex items-center">
-                            <span className="mr-2">✓</span> Clean Complete
+                            <span className="mr-2" aria-hidden="true">✓</span> Clean Complete
                         </h4>
                         <p className="text-white text-2xl font-black mt-1">{cleanerStats.freed.toFixed(2)} MB <span className="text-sm font-normal text-gray-400 tracking-wide uppercase">Freed</span></p>
                     </div>

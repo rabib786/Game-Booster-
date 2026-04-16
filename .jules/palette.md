@@ -28,3 +28,7 @@
 ## 2024-05-20 - Add focus visible styles to primary action buttons
 **Learning:** Found multiple primary action buttons missing `focus-visible` styles, making keyboard navigation difficult for users relying on keyboard focus indicators.
 **Action:** Always ensure any `<button>` includes explicit `focus-visible` utility classes that match the application's global focus styles (e.g., `focus-visible:ring-razer-green`).
+
+## 2024-05-21 - Enforce accessibility for purely visual typographic symbols
+**Learning:** Screen readers announce visual typographic symbols like `✓` and `✕`, causing unnecessary noise for users relying on assistive technologies.
+**Action:** Always ensure purely visual typographic symbols are wrapped in an element with `aria-hidden="true"`.
