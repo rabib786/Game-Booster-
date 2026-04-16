@@ -455,16 +455,16 @@ function App() {
     addLog(`Starting launch sequence for ${game.title}...`);
     try {
       if (isEelAvailable()) {
-        const response = await callEel<[any, any, any, any], any>('launch_game', game.id, game.profile, game.exe_path, game.exe_name);
+        const response = await callEel<[any, any, any, any], any>('launch_game', game.id, game.profile || {}, game.exe_path, game.exe_name);
         if (response.status === 'success') {
           addLog(`Launch success: ${response.details}`);
 
           // Sync UI states based on profile
-          if (game.profile.high_priority) {
+          if (game.profile?.high_priority) {
             setIsMonitoring(true);
             setTargetExe(game.exe_name);
           }
-          if (game.profile.suspend_services) setIsServicesSuspended(true);
+          if (game.profile?.suspend_services) setIsServicesSuspended(true);
 
         } else {
           addLog(`Launch failed: ${response.message}`);
