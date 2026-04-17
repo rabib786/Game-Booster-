@@ -40,3 +40,6 @@
 ## 2024-05-18 - Capping Append-Only Arrays in React State
 **Learning:** When managing console logs or append-only arrays in React state that can grow indefinitely, unbounded appends cause an O(N) array copy operation on every state update and continuously leak memory.
 **Action:** Cap the array size (e.g., to the latest 100 entries using `.slice(-100)`) when appending to prevent O(N) bottlenecks and memory leaks over long sessions.
+## 2024-05-19 - Missing useCallback on Profile Toggles
+**Learning:** React state updater functions passed as props into memoized components (like `toggleProfileSetting`) must be wrapped in `useCallback` to prevent unnecessary re-renders when the parent component re-renders. When a toggle handler recreates a function reference on every render loop, it causes O(N) re-renders across all items, defeating `React.memo()`.
+**Action:** Always memoize callback handlers passed into mapped arrays or `React.memo` components, using `useCallback` with correct dependency arrays.
