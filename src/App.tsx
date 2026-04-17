@@ -566,7 +566,7 @@ function App() {
     }
   };
 
-  const toggleProfileSetting = (settingKey: keyof GameProfile) => {
+  const toggleProfileSetting = useCallback((settingKey: keyof GameProfile) => {
     if (!selectedGameProfile) return;
 
     const updatedGame = {
@@ -581,7 +581,7 @@ function App() {
 
     // Update main array
     setInstalledGames(prev => prev.map(g => g.id === updatedGame.id ? updatedGame : g));
-  };
+  }, [selectedGameProfile]);
 
 
   const handleCleanSystem = async () => {
