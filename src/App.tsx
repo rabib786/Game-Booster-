@@ -169,6 +169,33 @@ const SystemConsole = React.memo(({ logs }: { logs: string[] }) => {
   );
 });
 
+// ⚡ Bolt: Extract PrimeGameItem to prevent O(N) re-renders
+const PrimeGameItem = React.memo(({
+  game,
+  isTweaking,
+  onTweak
+}: {
+  game: PrimeGame,
+  isTweaking: boolean,
+  onTweak: (name: string) => void
+}) => {
+  return (
+    <div className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
+      <div>
+        <h3 className="text-white font-bold mb-2">{game.name}</h3>
+        <p className="text-xs text-gray-400 mb-4">{game.primeDescription}</p>
+      </div>
+      <button
+        onClick={() => onTweak(game.name)}
+        disabled={isTweaking}
+        className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-600 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        {isTweaking ? 'Optimizing...' : `Optimize ${game.name}`}
+      </button>
+    </div>
+  );
+});
+
 // ⚡ Bolt: Extracted ProcessItem to prevent O(N) re-renders on every selection toggle
 const SelectedProcessItem = React.memo(({ proc }: { proc: ProcessInfo }) => {
   const isRisky = proc.name.toLowerCase().includes('explorer.exe') || proc.name.toLowerCase().includes('system');
@@ -900,7 +927,7 @@ function App() {
   };
 
 
-  const handleTweakGame = async (gameName: string) => {
+  const handleTweakGame = useCallback(async (gameName: string) => {
     setIsTweaking(true);
     addLog(`Applying Booster Prime settings for ${gameName}...`);
     if (isEelAvailable()) {
@@ -926,7 +953,7 @@ function App() {
         setIsTweaking(false);
       }, 1000);
     }
-  };
+  }, [addLog]);
 
   const handlePurgeRam = async () => {
     setIsPurging(true);
@@ -1506,19 +1533,12 @@ function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {primeGames.length > 0 ? (
                 primeGames.map((game) => (
-                  <div key={game.id} className="bg-panel-bg p-5 rounded-sm border border-gray-800 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-white font-bold mb-2">{game.name}</h3>
-                      <p className="text-xs text-gray-400 mb-4">{game.primeDescription}</p>
-                    </div>
-                    <button
-                      onClick={() => handleTweakGame(game.name)}
-                      disabled={isTweaking}
-                      className={`w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors bg-gray-800 text-white hover:bg-yellow-600 border border-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-600 ${isTweaking ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {isTweaking ? 'Optimizing...' : `Optimize ${game.name}`}
-                    </button>
-                  </div>
+                  <PrimeGameItem
+                    key={game.id}
+                    game={game}
+                    isTweaking={isTweaking}
+                    onTweak={handleTweakGame}
+                  />
                 ))
               ) : (
                 <div className="col-span-full text-center p-8 bg-panel-bg rounded border border-gray-800 flex flex-col items-center">
