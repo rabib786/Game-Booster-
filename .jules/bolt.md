@@ -40,3 +40,7 @@
 ## 2024-05-18 - Capping Append-Only Arrays in React State
 **Learning:** When managing console logs or append-only arrays in React state that can grow indefinitely, unbounded appends cause an O(N) array copy operation on every state update and continuously leak memory.
 **Action:** Cap the array size (e.g., to the latest 100 entries using `.slice(-100)`) when appending to prevent O(N) bottlenecks and memory leaks over long sessions.
+
+## 2024-05-20 - Extract Map Callbacks into Memoized Components
+**Learning:** In React, mapping over arrays with inline layouts and callbacks creates new components and functions on every render. If the parent updates frequently (e.g., polling telemetry), it causes expensive O(N) re-renders across the entire list.
+**Action:** Always extract list items inside `.map()` loops into standalone `React.memo()` components and ensure passed event handlers are wrapped in `useCallback` to maintain referential equality and prevent O(N) re-render bottlenecks.
