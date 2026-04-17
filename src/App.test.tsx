@@ -82,8 +82,8 @@ describe('App', () => {
 
       render(<App />);
 
-      // Navigate to Booster Prime tab
-      fireEvent.click(screen.getByText('Booster Prime'));
+      // Navigate to System Booster tab
+      fireEvent.click(screen.getByText('System Booster'));
 
       // Find and click Clean Now button
       const cleanBtn = screen.getByRole('button', { name: 'Clean Now' });
@@ -113,7 +113,7 @@ describe('App', () => {
 
       render(<App />);
 
-      fireEvent.click(screen.getByText('Booster Prime'));
+      fireEvent.click(screen.getByText('System Booster'));
       const cleanBtn = screen.getByRole('button', { name: 'Clean Now' });
       fireEvent.click(cleanBtn);
 
@@ -135,7 +135,7 @@ describe('App', () => {
 
       render(<App />);
 
-      fireEvent.click(screen.getByText('Booster Prime'));
+      fireEvent.click(screen.getByText('System Booster'));
       const cleanBtn = screen.getByRole('button', { name: 'Clean Now' });
       fireEvent.click(cleanBtn);
 
@@ -152,7 +152,7 @@ describe('App', () => {
 
       render(<App />);
 
-      fireEvent.click(screen.getByText('Booster Prime'));
+      fireEvent.click(screen.getByText('System Booster'));
       const cleanBtn = screen.getByText('Clean Now');
       fireEvent.click(cleanBtn);
 
@@ -185,8 +185,8 @@ describe('App', () => {
 
       render(<App />);
 
-      // Navigate to Booster Prime tab
-      fireEvent.click(screen.getByText('Booster Prime'));
+      // Navigate to System Booster tab
+      fireEvent.click(screen.getByText('System Booster'));
 
       // Find and click Optimize Now button
       const optimizeBtn = screen.getByRole('button', { name: 'Optimize Now' });
@@ -216,7 +216,7 @@ describe('App', () => {
 
       render(<App />);
 
-      fireEvent.click(screen.getByText('Booster Prime'));
+      fireEvent.click(screen.getByText('System Booster'));
       const optimizeBtn = screen.getByRole('button', { name: 'Optimize Now' });
       fireEvent.click(optimizeBtn);
 
@@ -238,7 +238,7 @@ describe('App', () => {
 
       render(<App />);
 
-      fireEvent.click(screen.getByText('Booster Prime'));
+      fireEvent.click(screen.getByText('System Booster'));
       const optimizeBtn = screen.getByRole('button', { name: 'Optimize Now' });
       fireEvent.click(optimizeBtn);
 
@@ -255,7 +255,7 @@ describe('App', () => {
 
       render(<App />);
 
-      fireEvent.click(screen.getByText('Booster Prime'));
+      fireEvent.click(screen.getByText('System Booster'));
       const optimizeBtn = screen.getByText('Optimize Now');
       fireEvent.click(optimizeBtn);
 

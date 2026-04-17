@@ -1131,7 +1131,7 @@ function App() {
     return (selectedProcesses.reduce((sum, p) => sum + p.memory_mb, 0) / 1024).toFixed(2);
   }, [selectedProcesses]);
 
-  const tabOrder: Array<'Library' | 'Boost Tab' | 'Booster Prime' | 'Settings'> = ['Library', 'Boost Tab', 'Booster Prime', 'Settings'];
+  const tabOrder: Array<'Library' | 'Boost Tab' | 'System Booster' | 'Booster Prime' | 'Settings'> = ['Library', 'Boost Tab', 'System Booster', 'Booster Prime', 'Settings'];
 
   const handleTabStep = (direction: -1 | 1) => {
     const currentIndex = tabOrder.indexOf(currentTab as typeof tabOrder[number]);
@@ -1168,6 +1168,7 @@ function App() {
         </div>
         <button role="tab" aria-selected={currentTab === "Library"} className={`transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1 ${currentTab === "Library" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Library")}>Library</button>
         <button role="tab" aria-selected={currentTab === "Boost Tab"} className={`transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1 ${currentTab === "Boost Tab" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Boost Tab")}>Boost</button>
+        <button role="tab" aria-selected={currentTab === "System Booster"} className={`transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1 ${currentTab === "System Booster" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("System Booster")}>System Booster</button>
         <button role="tab" aria-selected={currentTab === "Booster Prime"} className={`transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1 ${currentTab === "Booster Prime" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Booster Prime")}>Booster Prime</button>
         <button role="tab" aria-selected={currentTab === "Settings"} className={`transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none rounded px-1 ${currentTab === "Settings" ? "text-razer-green border-b-2 border-razer-green pb-1" : "text-gray-500 hover:text-white"}`} onClick={() => setCurrentTab("Settings")}>Settings</button>
       </nav>
@@ -1553,7 +1554,11 @@ function App() {
                 </div>
               )}
             </div>
+          </div>
+        )}
 
+        {currentTab === 'System Booster' && (
+          <div className="flex flex-col space-y-8 animate-fade-in">
             {/* Injected System Booster Tools */}
             <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-blue-500 shadow-lg" data-purpose="clean-system-card">
               <div className="flex items-center justify-between">
