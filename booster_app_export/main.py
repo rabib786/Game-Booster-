@@ -1770,6 +1770,9 @@ def launch_game(game_id, profile, exe_path, exe_name):
       "ram_purge": True
     }
     """
+    if profile is None:
+        profile = {}
+
     # Security Validation: Retrieve trusted game path from backend scan
     installed_games = scan_games()
     trusted_game = next((g for g in installed_games if g.get('id') == game_id), None)
