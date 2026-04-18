@@ -32,3 +32,7 @@
 ## 2024-05-21 - Enforce accessibility for purely visual typographic symbols
 **Learning:** Screen readers announce visual typographic symbols like `✓` and `✕`, causing unnecessary noise for users relying on assistive technologies.
 **Action:** Always ensure purely visual typographic symbols are wrapped in an element with `aria-hidden="true"`.
+
+## 2024-05-22 - Improve accessible names for dynamic controls
+**Learning:** Generic `aria-label`s on repeated items (like "Play & Boost" on every game card) create ambiguity for screen reader users. Additionally, custom switches using `<button role="switch">` often duplicate label text in their `aria-label` instead of programmatically associating with their descriptive sibling elements.
+**Action:** Always include dynamic contextual data (like the game title) in `aria-label`s for repeated list items. For custom switches, use `aria-labelledby` and `aria-describedby` pointing to the IDs of the nearby heading and paragraph elements to provide full context without duplicating text.

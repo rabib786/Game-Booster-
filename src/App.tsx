@@ -121,15 +121,17 @@ const GameCard = React.memo(({ game, onLaunch, onConfigure }: { game: Game, onLa
         <button
           onClick={(e) => { e.stopPropagation(); onLaunch(game); }}
           className="bg-razer-green hover:bg-green-400 text-black font-black py-2 px-8 rounded-full text-sm uppercase tracking-wider transform hover:scale-105 transition-all shadow-[0_0_15px_rgba(68,214,44,0.4)] flex items-center space-x-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+          aria-label={`Play & Boost ${game.title}`}
         >
-          <Play size={16} fill="currentColor" />
+          <Play size={16} fill="currentColor" aria-hidden="true" />
           <span>Play & Boost</span>
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onConfigure(game); }}
           className="text-gray-300 hover:text-white flex items-center space-x-2 text-xs uppercase tracking-widest font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded px-2 py-1"
+          aria-label={`Configure Profile for ${game.title}`}
         >
-          <Settings size={14} />
+          <Settings size={14} aria-hidden="true" />
           <span>Configure Profile</span>
         </button>
       </div>
@@ -1687,8 +1689,8 @@ function App() {
               <h2 className="text-lg font-bold text-white mb-4">System Tray</h2>
               <div className="flex items-center justify-between">
                 <div className="pr-4">
-                  <h3 className="text-gray-200 text-sm font-bold">Minimize to System Tray Instead of Closing</h3>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <h3 id="tray-mode-label" className="text-gray-200 text-sm font-bold">Minimize to System Tray Instead of Closing</h3>
+                  <p id="tray-mode-desc" className="text-xs text-gray-500 mt-1">
                     {trayMode
                       ? "App will minimize to tray when closed. Click tray icon to restore."
                       : "App will exit when closed (normal behavior)."}
@@ -1698,7 +1700,8 @@ function App() {
                   onClick={handleToggleTrayMode}
                   role="switch"
                   aria-checked={trayMode}
-                  aria-label="Toggle System Tray Integration"
+                  aria-labelledby="tray-mode-label"
+                  aria-describedby="tray-mode-desc"
                   className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none ${trayMode ? 'bg-razer-green' : 'bg-gray-600'}`}
                 >
                   <span
@@ -1746,14 +1749,15 @@ function App() {
               ].map((setting) => (
                 <div key={setting.key} className="flex items-center justify-between py-2 border-b border-gray-800/50 last:border-0">
                   <div className="flex-1 pr-4">
-                    <h3 className="text-gray-200 text-sm font-bold">{setting.label}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">{setting.desc}</p>
+                    <h3 id={`profile-label-${setting.key}`} className="text-gray-200 text-sm font-bold">{setting.label}</h3>
+                    <p id={`profile-desc-${setting.key}`} className="text-xs text-gray-500 mt-0.5">{setting.desc}</p>
                   </div>
                   <button
                     onClick={() => toggleProfileSetting(setting.key as keyof GameProfile)}
                     role="switch"
                     aria-checked={selectedGameProfile.profile[setting.key as keyof GameProfile]}
-                    aria-label={setting.label}
+                    aria-labelledby={`profile-label-${setting.key}`}
+                    aria-describedby={`profile-desc-${setting.key}`}
                     className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:outline-none ${selectedGameProfile.profile[setting.key as keyof GameProfile] ? 'bg-razer-green' : 'bg-gray-600'}`}
                   >
                     <span
