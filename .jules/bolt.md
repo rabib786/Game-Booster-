@@ -44,3 +44,7 @@
 ## 2024-05-20 - Extract Map Callbacks into Memoized Components
 **Learning:** In React, mapping over arrays with inline layouts and callbacks creates new components and functions on every render. If the parent updates frequently (e.g., polling telemetry), it causes expensive O(N) re-renders across the entire list.
 **Action:** Always extract list items inside `.map()` loops into standalone `React.memo()` components and ensure passed event handlers are wrapped in `useCallback` to maintain referential equality and prevent O(N) re-render bottlenecks.
+
+## 2024-05-21 - Use Stable Keys in Mapped Arrays
+**Learning:** Using the array index as the key in append-only React list arrays causes unnecessary reconciling logic.
+**Action:** Always map objects with a stable ID in append-only logs for React lists to use stable keys.
