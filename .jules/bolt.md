@@ -44,3 +44,7 @@
 ## 2024-05-20 - Extract Map Callbacks into Memoized Components
 **Learning:** In React, mapping over arrays with inline layouts and callbacks creates new components and functions on every render. If the parent updates frequently (e.g., polling telemetry), it causes expensive O(N) re-renders across the entire list.
 **Action:** Always extract list items inside `.map()` loops into standalone `React.memo()` components and ensure passed event handlers are wrapped in `useCallback` to maintain referential equality and prevent O(N) re-render bottlenecks.
+
+## 2023-11-20 - Optimize startup registry scanning with pre-compiled regex
+**Learning:** Checking for multiple substring matches in registry string values using Python generators (`any(target in s for target in targets)`) creates a substantial O(N*M) CPU overhead during iterative registry scans.
+**Action:** Always pre-compile these targets into a single case-insensitive Regex `re.compile(r"target1|target2...", flags=re.IGNORECASE)` to perform a single native string search pass per registry item.

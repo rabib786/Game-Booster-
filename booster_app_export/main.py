@@ -57,6 +57,7 @@ RE_STEAM_LEGACY_PATH = re.compile(r'"\d+"\s*"([A-Za-z]:\\\\[^"]+)"')
 RE_STEAM_NAME = re.compile(r'"name"\s+"([^"]+)"')
 RE_STEAM_DIR = re.compile(r'"installdir"\s+"([^"]+)"')
 RE_STEAM_APPID = re.compile(r'"appid"\s+"([^"]+)"')
+RE_STARTUP_TARGETS = re.compile(r'spotify|discord|skype|onedrive|steam|epicgameslauncher|battlenet|teams|slack', flags=re.IGNORECASE)
 
 # Initialize Eel with the 'web' folder
 eel.init('web')
@@ -1047,8 +1048,6 @@ def optimize_startup():
     if winreg is None:
         return {"status": "error", "message": "Startup optimization is only supported on Windows."}
 
-    # Target non-essential apps to disable from startup
-    targets = ['spotify', 'discord', 'skype', 'onedrive', 'steam', 'epicgameslauncher', 'battlenet', 'teams', 'slack']
     disabled_apps = []
     
     try:
@@ -1060,11 +1059,10 @@ def optimize_startup():
         while True:
             try:
                 name, value, _ = winreg.EnumValue(key, i)
-                name_lower = name.lower()
-                value_lower = value.lower()
                 
-                # Check if it's a target non-essential app
-                is_target = any(target in name_lower or target in value_lower for target in targets)
+                # ⚡ Bolt Optimization: Replace O(N*M) generator loop with a pre-compiled regex search
+                # This drops the implicit loop per registry entry in favor of a single native C regex pass.
+                is_target = bool(RE_STARTUP_TARGETS.search(name) or RE_STARTUP_TARGETS.search(value))
                 if is_target:
                     # Disable it by deleting the registry value
                     winreg.DeleteValue(key, name)
