@@ -32,3 +32,6 @@
 ## 2024-05-21 - Enforce accessibility for purely visual typographic symbols
 **Learning:** Screen readers announce visual typographic symbols like `✓` and `✕`, causing unnecessary noise for users relying on assistive technologies.
 **Action:** Always ensure purely visual typographic symbols are wrapped in an element with `aria-hidden="true"`.
+## 2024-04-17 - Accessible Status Indicators
+**Learning:** Decorative emojis used as status indicators with `aria-hidden="true"` hide critical information from screen readers.
+**Action:** Always accompany `aria-hidden` visual indicators with visually hidden text (e.g., `<span className="sr-only">`) to ensure status information is conveyed to assistive technologies.

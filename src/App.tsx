@@ -202,7 +202,14 @@ const SelectedProcessItem = React.memo(({ proc }: { proc: ProcessInfo }) => {
   return (
     <li className="flex justify-between text-xs p-2 hover:bg-gray-900 rounded">
       <div className="flex items-center space-x-2">
-        {isRisky ? <span className="text-red-500" title="Risky Process" aria-hidden="true">⚠️</span> : <span className="text-gray-500" aria-hidden="true">📄</span>}
+        {isRisky ? (
+          <>
+            <span className="text-red-500" title="Risky Process" aria-hidden="true">⚠️</span>
+            <span className="sr-only">Risky Process</span>
+          </>
+        ) : (
+          <span className="text-gray-500" aria-hidden="true">📄</span>
+        )}
         <span className={isRisky ? "text-red-400" : "text-gray-300"}>{proc.name}</span>
       </div>
       <span className="text-gray-500">{proc.memory_mb.toFixed(1)} MB</span>
