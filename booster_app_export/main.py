@@ -374,7 +374,10 @@ def get_telemetry():
 
     # CPU Usage
     try:
-        telemetry["cpu_usage"] = psutil.cpu_percent(interval=None)
+        # ⚡ Bolt Optimization: Use a blocking interval (0.1s) instead of None.
+        # interval=None provides inaccurate, instantaneous measurements that reflect elapsed time since import.
+        # A small blocking interval ensures accurate readings for the telemetry dashboard.
+        telemetry["cpu_usage"] = psutil.cpu_percent(interval=0.1)
     except Exception:
         pass
 
