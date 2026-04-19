@@ -36,3 +36,6 @@
 ## 2024-05-22 - Improve accessible names for dynamic controls
 **Learning:** Generic `aria-label`s on repeated items (like "Play & Boost" on every game card) create ambiguity for screen reader users. Additionally, custom switches using `<button role="switch">` often duplicate label text in their `aria-label` instead of programmatically associating with their descriptive sibling elements.
 **Action:** Always include dynamic contextual data (like the game title) in `aria-label`s for repeated list items. For custom switches, use `aria-labelledby` and `aria-describedby` pointing to the IDs of the nearby heading and paragraph elements to provide full context without duplicating text.
+## 2024-04-19 - Screen Reader Accessibility for Status Emojis
+**Learning:** Many status indicators in this app (like the risky process warning or the lightning bolt) use visual emojis with `aria-hidden="true"`. However, without an adjacent `sr-only` text span, the status information is completely lost to screen reader users.
+**Action:** Always pair `aria-hidden="true"` visual indicators with an adjacent visually hidden text element (e.g., `<span className="sr-only">Status Text</span>`) when the visual conveys important state.

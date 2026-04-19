@@ -204,7 +204,17 @@ const SelectedProcessItem = React.memo(({ proc }: { proc: ProcessInfo }) => {
   return (
     <li className="flex justify-between text-xs p-2 hover:bg-gray-900 rounded">
       <div className="flex items-center space-x-2">
-        {isRisky ? <span className="text-red-500" title="Risky Process" aria-hidden="true">⚠️</span> : <span className="text-gray-500" aria-hidden="true">📄</span>}
+        {isRisky ? (
+          <>
+            <span className="text-red-500" title="Risky Process" aria-hidden="true">⚠️</span>
+            <span className="sr-only">Risky Process</span>
+          </>
+        ) : (
+          <>
+            <span className="text-gray-500" aria-hidden="true">📄</span>
+            <span className="sr-only">Normal Process</span>
+          </>
+        )}
         <span className={isRisky ? "text-red-400" : "text-gray-300"}>{proc.name}</span>
       </div>
       <span className="text-gray-500">{proc.memory_mb.toFixed(1)} MB</span>
@@ -1293,6 +1303,7 @@ function App() {
               <div className="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
               <div className="absolute inset-0 border-4 border-razer-green rounded-full" style={{ clipPath: 'polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%)' }}></div>
               <span className="text-razer-green text-xl" aria-hidden="true">⚡</span>
+              <span className="sr-only">Ready</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">28 items will be optimized</h1>
@@ -1639,7 +1650,7 @@ function App() {
           <div className="flex flex-col space-y-8 animate-fade-in">
             <section className="bg-panel-bg p-6 rounded-sm border-l-4 border-gray-500 shadow-lg">
               <div className="flex items-center space-x-6">
-                <div className="text-gray-400 text-3xl"><Settings size={32} /></div>
+                <div className="text-gray-400 text-3xl"><Settings size={32} aria-hidden="true" /></div>
                 <div>
                   <h1 className="text-2xl font-bold text-white">Application Settings</h1>
                   <p className="text-sm text-gray-500 font-medium">Customize global hotkeys and preferences.</p>
