@@ -374,7 +374,7 @@ def get_telemetry():
 
     # CPU Usage
     try:
-        telemetry["cpu_usage"] = psutil.cpu_percent(interval=None)
+        telemetry["cpu_usage"] = psutil.cpu_percent(interval=0.1)
     except Exception:
         pass
 
@@ -638,7 +638,8 @@ def suspend_services():
     for service in services_to_suspend:
         try:
             # CREATE_NO_WINDOW is 0x08000000
-            p = subprocess.Popen(['sc', 'stop', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
+            sc_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'System32', 'sc.exe')
+            p = subprocess.Popen([sc_path, 'stop', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
             processes.append((service, p))
         except Exception:
             pass
@@ -670,7 +671,8 @@ def restore_services():
     # ⚡ Bolt Optimization: Batch system calls using subprocess.Popen
     for service in suspended_services_list:
         try:
-            p = subprocess.Popen(['sc', 'start', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
+            sc_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'System32', 'sc.exe')
+            p = subprocess.Popen([sc_path, 'start', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
             processes.append((service, p))
         except Exception:
             pass
@@ -1112,7 +1114,8 @@ def set_power_plan(plan_type):
         else:
             return {"status": "error", "message": "Invalid power plan type."}
 
-        result = subprocess.run(['powercfg', '/setactive', guid], capture_output=True, text=True, creationflags=0x08000000)
+        powercfg_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'System32', 'powercfg.exe')
+        result = subprocess.run([powercfg_path, '/setactive', guid], capture_output=True, text=True, creationflags=0x08000000)
 
         if result.returncode == 0:
             plan_name = "High Performance" if plan_type == 'high_performance' else "Balanced"
@@ -1128,11 +1131,13 @@ def flush_dns_and_reset():
     Flushes DNS and resets network stack to reduce latency.
     """
     try:
+        ipconfig_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'System32', 'ipconfig.exe')
+        netsh_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'System32', 'netsh.exe')
         commands = [
-            ['ipconfig', '/release'],
-            ['ipconfig', '/renew'],
-            ['ipconfig', '/flushdns'],
-            ['netsh', 'int', 'ip', 'reset']
+            [ipconfig_path, '/release'],
+            [ipconfig_path, '/renew'],
+            [ipconfig_path, '/flushdns'],
+            [netsh_path, 'int', 'ip', 'reset']
         ]
 
         for cmd in commands:
@@ -1884,4 +1889,4 @@ def get_live_processes():
 
 if __name__ == '__main__':
     # Start the app. port=0 automatically selects an available port.
-    eel.start('index.html', size=(1000, 650), port=0)
+    eel.start('index.html', size=(1000, 650), port=0, close_callback=close_window)

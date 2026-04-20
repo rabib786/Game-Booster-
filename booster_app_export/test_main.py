@@ -214,8 +214,9 @@ class TestPowerPlanAndNetwork(unittest.TestCase):
     def test_set_power_plan_success(self, mock_run):
         mock_run.return_value.returncode = 0
         result = set_power_plan('high_performance')
+        powercfg_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'System32', 'powercfg.exe')
         mock_run.assert_called_with(
-            ['powercfg', '/setactive', '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'],
+            [powercfg_path, '/setactive', '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'],
             capture_output=True,
             text=True,
             creationflags=0x08000000
@@ -224,7 +225,7 @@ class TestPowerPlanAndNetwork(unittest.TestCase):
 
         result = set_power_plan('balanced')
         mock_run.assert_called_with(
-            ['powercfg', '/setactive', '381b4222-f694-41f0-9685-ff5bb260df2e'],
+            [powercfg_path, '/setactive', '381b4222-f694-41f0-9685-ff5bb260df2e'],
             capture_output=True,
             text=True,
             creationflags=0x08000000
@@ -237,10 +238,12 @@ class TestPowerPlanAndNetwork(unittest.TestCase):
         result = flush_dns_and_reset()
         self.assertEqual(mock_run.call_count, 4)
         calls = mock_run.call_args_list
-        self.assertEqual(calls[0][0][0], ['ipconfig', '/release'])
-        self.assertEqual(calls[1][0][0], ['ipconfig', '/renew'])
-        self.assertEqual(calls[2][0][0], ['ipconfig', '/flushdns'])
-        self.assertEqual(calls[3][0][0], ['netsh', 'int', 'ip', 'reset'])
+        ipconfig_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'System32', 'ipconfig.exe')
+        netsh_path = os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'System32', 'netsh.exe')
+        self.assertEqual(calls[0][0][0], [ipconfig_path, '/release'])
+        self.assertEqual(calls[1][0][0], [ipconfig_path, '/renew'])
+        self.assertEqual(calls[2][0][0], [ipconfig_path, '/flushdns'])
+        self.assertEqual(calls[3][0][0], [netsh_path, 'int', 'ip', 'reset'])
 
 class TestConfigAndGames(unittest.TestCase):
     def test_validate_config_recovers_invalid_shape(self):

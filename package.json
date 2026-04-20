@@ -6,7 +6,7 @@
   "scripts": {
     "vite:dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
-    "build:exe": "npm run build && cd booster_app_export && python -m PyInstaller --noconsole --onefile --add-data \"web:web\" main.py",
+    "build:exe": "npm run build && cd booster_app_export && python -m PyInstaller --noconsole --onefile --add-data \"web;web\" main.py",
     "python:start": "cd booster_app_export && python main.py",
     "preview": "vite preview",
     "clean": "rm -rf dist booster_app_export/web booster_app_export/build booster_app_export/dist",
