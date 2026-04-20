@@ -39,3 +39,7 @@
 ## 2024-04-19 - Screen Reader Accessibility for Status Emojis
 **Learning:** Many status indicators in this app (like the risky process warning or the lightning bolt) use visual emojis with `aria-hidden="true"`. However, without an adjacent `sr-only` text span, the status information is completely lost to screen reader users.
 **Action:** Always pair `aria-hidden="true"` visual indicators with an adjacent visually hidden text element (e.g., `<span className="sr-only">Status Text</span>`) when the visual conveys important state.
+
+## 2024-06-15 - Add Keyboard Shortcut Hints to Actions
+**Learning:** Exposing customizable keyboard shortcuts visually via `<kbd>` tags and semantically via `aria-keyshortcuts` helps both power users and users relying on assistive technologies discover efficient ways to interact with the app.
+**Action:** Always include visual and semantic hints for keyboard shortcuts on primary actions.
