@@ -1357,9 +1357,17 @@ function App() {
               <button
                 onClick={initiateBoost}
                 disabled={isBoosting}
+                aria-keyshortcuts={boostHotkey}
                 className={`flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-400 text-black font-black py-2.5 px-12 rounded-sm text-sm uppercase tracking-tighter transition-all transform active:scale-95 shadow-[0_0_15px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isBoosting ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {isBoosting ? <><Loader2 size={16} className="animate-spin" /><span>Boosting...</span></> : <span>Boost Now</span>}
+                {isBoosting ? <><Loader2 size={16} className="animate-spin" /><span>Boosting...</span></> : (
+                  <div className="flex items-center space-x-2">
+                    <span>Boost Now</span>
+                    <kbd className="hidden sm:inline-block bg-black/20 text-black/70 px-1.5 py-0.5 rounded text-[10px] font-sans border border-black/10">
+                      {boostHotkey}
+                    </kbd>
+                  </div>
+                )}
               </button>
             </div>
           </div>
@@ -1473,9 +1481,13 @@ function App() {
             </div>
             <button
               onClick={handleToggleOverlay}
-              className="w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
+              aria-keyshortcuts={overlayHotkey}
+              className="w-full py-2 font-bold text-sm uppercase tracking-wider rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 flex items-center justify-center space-x-2"
             >
-              Toggle Overlay
+              <span>Toggle Overlay</span>
+              <kbd className="bg-black/30 text-gray-400 px-1.5 py-0.5 rounded text-[10px] font-sans border border-gray-700">
+                {overlayHotkey}
+              </kbd>
             </button>
           </div>
 
