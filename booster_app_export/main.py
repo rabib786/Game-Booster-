@@ -233,7 +233,8 @@ def undo_boost():
             exe_name = os.path.basename(normalized_path).lower()
             if exe_name in trusted_targets:
                 try:
-                    subprocess.Popen([normalized_path], cwd=os.path.dirname(normalized_path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+                    kwargs = {'creationflags': 0x08000000} if sys.platform == 'win32' else {}
+                    subprocess.Popen([normalized_path], cwd=os.path.dirname(normalized_path), **kwargs)
                     restarted.append(os.path.basename(normalized_path))
                 except Exception:
                     failed.append(os.path.basename(normalized_path))
@@ -637,9 +638,9 @@ def suspend_services():
     # to significantly reduce main thread blocking time.
     for service in services_to_suspend:
         try:
-            # CREATE_NO_WINDOW is 0x08000000
+            kwargs = {'creationflags': 0x08000000} if sys.platform == 'win32' else {}
             sc_path = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32', 'sc.exe')
-            p = subprocess.Popen([sc_path, 'stop', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
+            p = subprocess.Popen([sc_path, 'stop', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **kwargs)
             processes.append((service, p))
         except Exception:
             pass
@@ -671,8 +672,9 @@ def restore_services():
     # ⚡ Bolt Optimization: Batch system calls using subprocess.Popen
     for service in suspended_services_list:
         try:
+            kwargs = {'creationflags': 0x08000000} if sys.platform == 'win32' else {}
             sc_path = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32', 'sc.exe')
-            p = subprocess.Popen([sc_path, 'start', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=0x08000000)
+            p = subprocess.Popen([sc_path, 'start', service], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **kwargs)
             processes.append((service, p))
         except Exception:
             pass
@@ -1114,8 +1116,9 @@ def set_power_plan(plan_type):
         else:
             return {"status": "error", "message": "Invalid power plan type."}
 
+        kwargs = {'creationflags': 0x08000000} if sys.platform == 'win32' else {}
         powercfg_path = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32', 'powercfg.exe')
-        result = subprocess.run([powercfg_path, '/setactive', guid], capture_output=True, text=True, creationflags=0x08000000)
+        result = subprocess.run([powercfg_path, '/setactive', guid], capture_output=True, text=True, **kwargs)
 
         if result.returncode == 0:
             plan_name = "High Performance" if plan_type == 'high_performance' else "Balanced"
@@ -1141,8 +1144,9 @@ def flush_dns_and_reset():
             [netsh_path, 'int', 'ip', 'reset']
         ]
 
+        kwargs = {'creationflags': 0x08000000} if sys.platform == 'win32' else {}
         for cmd in commands:
-            subprocess.run(cmd, capture_output=True, text=True, creationflags=0x08000000)
+            subprocess.run(cmd, capture_output=True, text=True, **kwargs)
 
         return {"status": "success", "message": "Network flushed and reset successfully."}
     except Exception as e:
@@ -1817,7 +1821,8 @@ def launch_game(game_id, profile, exe_path, exe_name):
 
         # Launch the game executable
         if os.path.exists(trusted_exe_path):
-            subprocess.Popen([trusted_exe_path], cwd=os.path.dirname(trusted_exe_path), creationflags=0x08000000 if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+            kwargs = {'creationflags': 0x08000000} if sys.platform == 'win32' else {}
+            subprocess.Popen([trusted_exe_path], cwd=os.path.dirname(trusted_exe_path), **kwargs)
             details.append(f"Launched {trusted_exe_name}.")
         else:
             # Fallback for mock/testing

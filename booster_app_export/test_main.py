@@ -215,11 +215,12 @@ class TestPowerPlanAndNetwork(unittest.TestCase):
         mock_run.return_value.returncode = 0
         result = set_power_plan('high_performance')
         powercfg_path = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32', 'powercfg.exe')
+        kwargs = {'creationflags': 0x08000000} if sys.platform == 'win32' else {}
         mock_run.assert_called_with(
             [powercfg_path, '/setactive', '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'],
             capture_output=True,
             text=True,
-            creationflags=0x08000000
+            **kwargs
         )
         self.assertEqual(result['status'], 'success')
 
@@ -228,7 +229,7 @@ class TestPowerPlanAndNetwork(unittest.TestCase):
             [powercfg_path, '/setactive', '381b4222-f694-41f0-9685-ff5bb260df2e'],
             capture_output=True,
             text=True,
-            creationflags=0x08000000
+            **kwargs
         )
         self.assertEqual(result['status'], 'success')
 
