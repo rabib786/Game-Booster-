@@ -43,3 +43,6 @@
 ## 2024-06-15 - Add Keyboard Shortcut Hints to Actions
 **Learning:** Exposing customizable keyboard shortcuts visually via `<kbd>` tags and semantically via `aria-keyshortcuts` helps both power users and users relying on assistive technologies discover efficient ways to interact with the app.
 **Action:** Always include visual and semantic hints for keyboard shortcuts on primary actions.
+## 2024-06-25 - Improve accessibility of custom switches
+**Learning:** Found a custom toggle switch acting as `<button role="switch">` that only had an `aria-label` without explicitly linking its accessible name to the visual text via `aria-labelledby`. This duplicates text and reduces clarity for assistive technologies.
+**Action:** Always provide custom switches with `aria-labelledby` linked to the IDs of adjacent descriptive elements rather than duplicating the text in `aria-label`.

@@ -1338,9 +1338,9 @@ function App() {
               onClick={toggleAutoBoost}
               role="switch"
               aria-checked={autoBoost}
-              aria-label="Auto-Boost"
+              aria-labelledby="auto-boost-label"
             >
-              <span className="text-xs font-bold uppercase text-gray-400">Auto-Boost</span>
+              <span id="auto-boost-label" className="text-xs font-bold uppercase text-gray-400">Auto-Boost</span>
               {/* Toggle Switch */}
               <div className={`w-10 h-5 rounded-full relative transition-colors ${autoBoost ? 'bg-razer-green' : 'bg-gray-600'}`}>
                 <div className={`absolute top-1 w-3 h-3 bg-black rounded-full transition-all ${autoBoost ? 'right-1' : 'left-1'}`}></div>
