@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Settings, Play, X, Loader2 } from 'lucide-react';
 import { callEel, isEelAvailable } from './api/eelClient';
 
@@ -126,6 +126,40 @@ const SystemConsole = React.memo(({ logs }: { logs: string[] }) => {
 // By moving the 1000ms polling interval here, only this component will re-render
 // instead of forcing the entire application (including heavy process/game lists)
 // to reconcile on every tick.
+// ⚡ Bolt: Extract ProcessItem to React.memo to prevent O(N) list re-rendering
+const ProcessListItem = React.memo(({
+  proc,
+  isSelected,
+  onToggle
+}: {
+  proc: ProcessInfo;
+  isSelected: boolean;
+  onToggle: (pid: number, isSelected: boolean) => void;
+}) => {
+  return (
+    <button
+      role="checkbox"
+      aria-checked={isSelected}
+      aria-label={`Select ${proc.name}`}
+      className={`w-full text-left p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isSelected ? 'opacity-100 ring-1 ring-razer-green/50 bg-razer-green/5' : 'opacity-50 hover:opacity-100'}`}
+      onClick={() => onToggle(proc.pid, isSelected)}
+    >
+      <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-razer-green text-black' : 'bg-gray-700 text-white'}`}>
+        <span className="text-[10px] font-bold">{proc.name.charAt(0).toUpperCase()}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-300 truncate">{proc.name}</p>
+        <p className="text-xs text-gray-500">{proc.memory_mb >= 1024 ? (proc.memory_mb / 1024).toFixed(1) + ' GB' : Math.round(proc.memory_mb) + ' MB'}</p>
+      </div>
+      <div className="flex-shrink-0">
+        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-razer-green border-razer-green' : 'border-gray-500 bg-transparent'}`}>
+          {isSelected && <div className="w-2 h-2 rounded-full bg-black"></div>}
+        </div>
+      </div>
+    </button>
+  );
+});
+
 const TelemetryDashboard = React.memo(() => {
   const [telemetry, setTelemetry] = useState({ cpu_usage: 0, ram_usage_gb: 0, gpu_usage: 0, gpu_temp: 0 });
 
@@ -939,45 +973,18 @@ function App() {
   };
 
   // ⚡ Bolt Optimization: Prevent O(N²) list rendering bottleneck
-  // Wraps the massive process list mapping in useMemo so it doesn't re-render
-  // on unrelated state changes (like telemetry ticks or keystrokes).
-  // Also converts the O(N) array .includes() lookup into an O(1) Set.has() lookup.
+  // Converts the O(N) array .includes() lookup into an O(1) Set.has() lookup.
   const selectedPidsSet = useMemo(() => new Set(selectedPids), [selectedPids]);
 
-  const memoizedProcesses = useMemo(() => {
-    return liveProcesses.map((proc, idx) => {
-      const isSelected = selectedPidsSet.has(proc.pid);
-      return (
-        <button
-          key={proc.pid}
-          role="checkbox"
-          aria-checked={isSelected}
-          aria-label={`Select ${proc.name}`}
-          className={`w-full text-left p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isSelected ? 'opacity-100 ring-1 ring-razer-green/50 bg-razer-green/5' : 'opacity-50 hover:opacity-100'}`}
-          onClick={() => {
-            if (isSelected) {
-              setSelectedPids(prev => prev.filter(id => id !== proc.pid));
-            } else {
-              setSelectedPids(prev => [...prev, proc.pid]);
-            }
-          }}
-        >
-          <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-razer-green text-black' : 'bg-gray-700 text-white'}`}>
-            <span className="text-[10px] font-bold">{proc.name.charAt(0).toUpperCase()}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-300 truncate">{proc.name}</p>
-            <p className="text-xs text-gray-500">{proc.memory_mb >= 1024 ? (proc.memory_mb / 1024).toFixed(1) + ' GB' : Math.round(proc.memory_mb) + ' MB'}</p>
-          </div>
-          <div className="flex-shrink-0">
-            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-razer-green border-razer-green' : 'border-gray-500 bg-transparent'}`}>
-              {isSelected && <div className="w-2 h-2 rounded-full bg-black"></div>}
-            </div>
-          </div>
-        </button>
-      );
+  const handleTogglePid = useCallback((pid: number, isSelected: boolean) => {
+    setSelectedPids(prev => {
+      if (isSelected) {
+        return prev.filter(id => id !== pid);
+      } else {
+        return [...prev, pid];
+      }
     });
-  }, [liveProcesses, selectedPidsSet]);
+  }, []);
 
   const selectedProcesses = useMemo(() => {
     return liveProcesses.filter(p => selectedPidsSet.has(p.pid));
@@ -1387,7 +1394,14 @@ function App() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-purpose="process-grid">
-            {memoizedProcesses}
+            {liveProcesses.map(proc => (
+              <ProcessListItem
+                key={proc.pid}
+                proc={proc}
+                isSelected={selectedPidsSet.has(proc.pid)}
+                onToggle={handleTogglePid}
+              />
+            ))}
           </div>
         </section>
         {/* END: ProcessesSection */}
