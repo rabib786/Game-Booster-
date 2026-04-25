@@ -460,13 +460,16 @@ class TestPurgeRam(unittest.TestCase):
         mock_get_whitelist.return_value = {1}
 
         mock_proc1 = MagicMock()
-        mock_proc1.info = {'pid': 1, 'name': 'nexus.exe'}
+        mock_proc1.pid = 1
+        mock_proc1.name.return_value = 'nexus.exe'
 
         mock_proc2 = MagicMock()
-        mock_proc2.info = {'pid': 2, 'name': 'explorer.exe'}
+        mock_proc2.pid = 2
+        mock_proc2.name.return_value = 'explorer.exe'
 
         mock_proc3 = MagicMock()
-        mock_proc3.info = {'pid': 3, 'name': 'game.exe'}
+        mock_proc3.pid = 3
+        mock_proc3.name.return_value = 'game.exe'
         mock_mem = MagicMock()
         mock_mem.rss = 1024 * 1024 * 100
         mock_proc3.memory_info.return_value = mock_mem
