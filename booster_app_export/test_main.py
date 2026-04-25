@@ -412,5 +412,89 @@ class TestPurgeRam(unittest.TestCase):
         self.assertEqual(result['status'], 'success')
         self.assertIn('Successfully purged RAM for 2 processes', result['message'])
 
+    @patch('main._get_process_whitelist')
+    @patch('main.psutil.process_iter')
+    def test_get_live_processes(self, mock_process_iter, mock_get_whitelist):
+        mock_get_whitelist.return_value = {1}
+
+        mock_proc1 = MagicMock()
+        mock_proc1.info = {'pid': 1, 'name': 'nexus.exe'}
+
+        mock_proc2 = MagicMock()
+        mock_proc2.info = {'pid': 2, 'name': 'explorer.exe'}
+
+        mock_proc3 = MagicMock()
+        mock_proc3.info = {'pid': 3, 'name': 'game.exe'}
+        mock_mem = MagicMock()
+        mock_mem.rss = 1024 * 1024 * 100
+        mock_proc3.memory_info.return_value = mock_mem
+
+        mock_process_iter.return_value = [mock_proc1, mock_proc2, mock_proc3]
+
+        result = main.get_live_processes()
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['pid'], 3)
+        self.assertEqual(result[0]['name'], 'game.exe')
+        self.assertEqual(result[0]['memory_mb'], 100.0)
+
+    @patch('main._delete_target_dirs')
+    @patch('main.os.environ.get')
+    def test_clean_shader_caches(self, mock_env_get, mock_delete_dirs):
+        mock_env_get.side_effect = lambda k, d='': 'C:\\Mock' if k in ['LOCALAPPDATA', 'WINDIR'] else d
+        mock_delete_dirs.return_value = 1024 * 1024 * 50
+
+        result = main.clean_shader_caches()
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(result['message'], 'Cleaned 50.00 MB of Shader/Prefetch Junk.')
+
+    @patch('random.uniform')
+    @patch('random.randint')
+    def test_get_session_summary(self, mock_randint, mock_uniform):
+        mock_uniform.return_value = 1.5
+        mock_randint.side_effect = [15, 8]
+
+        result = main.get_session_summary()
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(result['details']['ram_cleared_gb'], 1.5)
+        self.assertEqual(result['details']['avg_fps_gain'], 15)
+        self.assertEqual(result['details']['1_percent_lows_gain'], 8)
+
+    @patch('main.os.environ.get')
+    @patch('main.os.path.exists')
+    @patch('main.open', create=True)
+    @patch('main.configparser.ConfigParser')
+    def test_tweak_game_settings(self, mock_config_parser, mock_open, mock_exists, mock_env_get):
+        mock_env_get.return_value = 'C:\\Mock'
+        mock_exists.return_value = True
+        mock_config = MagicMock()
+        mock_config_parser.return_value = mock_config
+
+        result = main.tweak_game_settings('warzone')
+        self.assertEqual(result['status'], 'success')
+
+        result = main.tweak_game_settings('cyberpunk 2077')
+        self.assertEqual(result['status'], 'success')
+
+        result = main.tweak_game_settings('unknown game')
+        self.assertEqual(result['status'], 'error')
+        self.assertIn('is not currently supported by Booster Prime', result['message'])
+
+    @patch('main.save_config')
+    @patch('main.load_config')
+    def test_toggle_tray_mode(self, mock_load, mock_save):
+        mock_load.return_value = {}
+
+        result = main.toggle_tray_mode(True)
+        self.assertEqual(result['status'], 'success')
+        mock_save.assert_called_once()
+        self.assertTrue(main.tray_active)
+
+    @patch('main.load_config')
+    def test_is_tray_active(self, mock_load):
+        main.tray_active = True
+        self.assertTrue(main.is_tray_active())
+        main.tray_active = False
+        self.assertFalse(main.is_tray_active())
+
 if __name__ == '__main__':
     unittest.main()
