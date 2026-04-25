@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Settings, Play, X, Loader2 } from 'lucide-react';
 import { FixedSizeGrid as Grid } from 'react-window';
 import { callEel, isEelAvailable } from './api/eelClient';
+import toast, { Toaster } from 'react-hot-toast';
 
 interface EelResponse {
   status: 'success' | 'error';
@@ -139,6 +140,32 @@ const GameCard = React.memo(({ game, onLaunch, onConfigure }: { game: Game, onLa
   );
 });
 
+// Skeleton loading component for GameCard
+const GameCardSkeleton = React.memo(() => {
+  return (
+    <div className="group bg-panel-bg rounded border border-gray-800 overflow-hidden relative flex flex-col h-48 shadow-lg animate-pulse">
+      {/* Background Pattern/Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-gray-800/20 to-black/60 z-0"></div>
+
+      {/* Card Content */}
+      <div className="relative z-10 p-5 flex-1 flex flex-col items-center justify-center">
+        <div className="w-16 h-16 bg-gray-700 rounded-lg shadow-inner flex items-center justify-center overflow-hidden mb-3 border border-gray-700">
+          {/* Placeholder for icon */}
+          <div className="w-full h-full bg-gray-600"></div>
+        </div>
+        <div className="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
+        <div className="h-3 bg-gray-800 rounded w-1/2"></div>
+      </div>
+
+      {/* Hover Overlay with Actions (hidden in skeleton) */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm opacity-0 z-20 flex flex-col items-center justify-center space-y-3">
+        <div className="h-8 bg-gray-700 rounded-full w-32"></div>
+        <div className="h-6 bg-gray-800 rounded w-24"></div>
+      </div>
+    </div>
+  );
+});
+
 // ⚡ Bolt: Extract LogLine to prevent O(N) string checks and DOM reconciliations on every log append.
 const LogLine = React.memo(({ log }: { log: string }) => {
   return (
@@ -255,6 +282,24 @@ const ProcessItem = React.memo(({
   );
 });
 
+// Skeleton loading component for ProcessItem
+const ProcessItemSkeleton = React.memo(() => {
+  return (
+    <div className="w-full text-left p-3 flex items-center space-x-4 rounded animate-pulse">
+      <div className="w-6 h-6 rounded bg-gray-700 flex items-center justify-center">
+        <div className="w-3 h-3 bg-gray-600 rounded-full"></div>
+      </div>
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="h-3 bg-gray-700 rounded w-3/4"></div>
+        <div className="h-2 bg-gray-800 rounded w-1/2"></div>
+      </div>
+      <div className="flex-shrink-0">
+        <div className="w-4 h-4 rounded-full border border-gray-700 bg-transparent"></div>
+      </div>
+    </div>
+  );
+});
+
 // ⚡ Bolt: Extracted TelemetryDashboard to prevent whole-app re-renders
 // By moving the 1000ms polling interval here, only this component will re-render
 // instead of forcing the entire application (including heavy process/game lists)
@@ -359,6 +404,7 @@ function App() {
   const [autoBoost, setAutoBoost] = useState(false);
   const [boostMode, setBoostMode] = useState<'Esports' | 'AAA' | 'Streaming'>('Esports');
   const [liveProcesses, setLiveProcesses] = useState<ProcessInfo[]>([]);
+  const [isProcessesLoading, setIsProcessesLoading] = useState(false);
   const [selectedPids, setSelectedPids] = useState<number[]>([]);
   const [boostProfile, setBoostProfile] = useState<'Aggressive' | 'Conservative' | 'Custom'>('Aggressive');
   const [availableProfiles, setAvailableProfiles] = useState<Record<string, string[]>>({});
@@ -375,6 +421,7 @@ function App() {
           setIsTrayActive(status);
         } catch (e) {
           console.error('Failed to fetch tray status', e);
+          toast.error('Failed to fetch tray status');
         }
       }
     };
@@ -389,6 +436,7 @@ function App() {
           setAvailableProfiles(profiles);
         } catch (e) {
           console.error('Failed to fetch profiles', e);
+          toast.error('Failed to fetch boost profiles');
         }
       }
     };
@@ -415,6 +463,7 @@ function App() {
 
   useEffect(() => {
     if (currentTab === 'Boost Tab') {
+      setIsProcessesLoading(true);
       const fetchProcesses = async () => {
         if (isEelAvailable()) {
           try {
@@ -426,6 +475,9 @@ function App() {
             }
           } catch (e) {
             console.error(e);
+            toast.error('Failed to fetch processes');
+          } finally {
+            setIsProcessesLoading(false);
           }
         } else {
           // Mock data
@@ -439,10 +491,14 @@ function App() {
             if (selectedPids.length === 0) {
               setSelectedPids(mockProcs.map(p => p.pid));
             }
+            setIsProcessesLoading(false);
           }, 500);
         }
       };
       fetchProcesses();
+    } else {
+      // Reset loading state when leaving tab
+      setIsProcessesLoading(false);
     }
   }, [currentTab]);
 
@@ -457,6 +513,7 @@ function App() {
             setPrimeGames(games);
           } catch (error) {
             console.error(`Error fetching Prime games: ${error}`);
+            toast.error('Failed to fetch Prime games');
           }
         } else {
           // Mock fallback
@@ -508,10 +565,14 @@ function App() {
 
         } else {
           addLog(`Launch failed: ${response.message}`);
+          console.error('Launch game failed:', response.message);
+          toast.error(`Failed to launch ${game.title}: ${response.message}`);
         }
       }
     } catch (error) {
       addLog(`Error: ${error}`);
+      console.error('Launch game error:', error);
+      toast.error(`Failed to launch ${game.title}. Please check connection.`);
     }
   }, [addLog]);
 
@@ -526,6 +587,8 @@ function App() {
         addLog(`Found ${games.length} games.`);
       } catch (error) {
         addLog(`Error scanning games: ${error}`);
+        console.error('Scan games error:', error);
+        toast.error('Failed to scan games. Please try again.');
       } finally {
         setIsScanning(false);
       }
@@ -581,10 +644,14 @@ function App() {
         } else {
           setTrayMode(!newMode); // revert on error
           addLog(`Error: ${response.message}`, true);
+          console.error('Toggle tray mode failed:', response.message);
+          toast.error(`Failed to toggle tray mode: ${response.message}`);
         }
       } catch (error) {
         setTrayMode(!newMode); // revert on error
         addLog(`Error toggling tray mode: ${error}`, true);
+        console.error('Toggle tray mode error:', error);
+        toast.error('Failed to toggle tray mode. Please check connection.');
       }
     } else {
       setTimeout(() => {
@@ -602,6 +669,8 @@ function App() {
         addLog(response.message);
       } catch (error) {
         addLog(`Error toggling overlay: ${error}`);
+        console.error('Toggle overlay error:', error);
+        toast.error('Failed to toggle performance overlay.');
       }
     }
   };
@@ -646,9 +715,13 @@ function App() {
           }
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('System clean failed:', result.message);
+          toast.error(`System clean failed: ${result.message}`);
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
+        console.error('System clean error:', error);
+        toast.error('Failed to clean system. Please check connection.');
       } finally {
         setIsCleaning(false);
       }
@@ -681,9 +754,13 @@ function App() {
           }
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('Startup optimization failed:', result.message);
+          toast.error(`Startup optimization failed: ${result.message}`);
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
+        console.error('Startup optimization error:', error);
+        toast.error('Failed to optimize startup. Please check connection.');
       } finally {
         setIsOptimizing(false);
       }
@@ -734,9 +811,13 @@ function App() {
           }
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('Game boost failed:', result.message);
+          toast.error(`Game boost failed: ${result.message}`);
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
+        console.error('Game boost error:', error);
+        toast.error('Failed to execute game boost. Please check connection.');
       } finally {
         setIsBoosting(false);
       }
@@ -758,6 +839,15 @@ function App() {
 
   const handleHyperBoost = async () => {
     if (isHyperBoosting) return;
+
+    // Confirmation before proceeding with destructive actions
+    const confirmed = window.confirm(
+      `HyperBoost "${boostMode}" will perform multiple system optimizations including killing selected processes, changing power plan, flushing network, and more.\n\nAre you sure you want to continue?`
+    );
+    if (!confirmed) {
+      addLog('HyperBoost cancelled by user.');
+      return;
+    }
 
     const modeToProfile: Record<'Esports' | 'AAA' | 'Streaming', 'Aggressive' | 'Conservative' | 'Custom'> = {
       Esports: 'Aggressive',
@@ -785,6 +875,8 @@ function App() {
       addLog(`HyperBoost "${boostMode}" sequence complete.`);
     } catch (error) {
       addLog(`HyperBoost failed: ${error}`, true);
+      console.error('HyperBoost error:', error);
+      toast.error('HyperBoost failed. Please check connection.');
     } finally {
       setIsHyperBoosting(false);
     }
@@ -802,9 +894,13 @@ function App() {
           if (result.details) addLog(result.details);
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('Undo boost failed:', result.message);
+          toast.error(`Failed to undo boost: ${result.message}`);
         }
       } catch (e) {
         addLog(`Failed to communicate: ${e}`, true);
+        console.error('Undo boost error:', e);
+        toast.error('Failed to undo boost. Please check connection.');
       } finally {
         setIsUndoing(false);
       }
@@ -821,6 +917,7 @@ function App() {
   const handleSaveCustomProfile = async () => {
     if (selectedPids.length === 0) {
       addLog('No selected apps to save for custom profile.', true);
+      toast.error('No selected apps to save for custom profile.');
       return;
     }
 
@@ -832,6 +929,7 @@ function App() {
 
     if (selectedAppNames.length === 0) {
       addLog('Unable to resolve selected apps for custom profile.', true);
+      toast.error('Unable to resolve selected apps for custom profile.');
       return;
     }
 
@@ -846,9 +944,13 @@ function App() {
           setAvailableProfiles(refreshed);
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('Save custom profile failed:', result.message);
+          toast.error(`Failed to save custom profile: ${result.message}`);
         }
       } catch (error) {
         addLog(`Failed to save custom profile: ${error}`, true);
+        console.error('Save custom profile error:', error);
+        toast.error('Failed to save custom profile. Please check connection.');
       } finally {
         setIsSavingCustomProfile(false);
       }
@@ -875,9 +977,15 @@ function App() {
               lows: summaryData.details['1_percent_lows_gain'],
               ram: summaryData.details.ram_cleared_gb
             });
+          } else if (summaryData) {
+            addLog(`Error: ${summaryData.message}`, true);
+            console.error('Get session summary failed:', summaryData.message);
+            toast.error(`Failed to get session summary: ${summaryData.message}`);
           }
         } catch (error) {
           addLog(`Failed to communicate with backend: ${error}`, true);
+          console.error('Stop monitor error:', error);
+          toast.error('Failed to stop monitor. Please check connection.');
         }
       } else {
         setTimeout(() => {
@@ -892,6 +1000,7 @@ function App() {
     } else {
       if (!targetExe.trim()) {
         addLog('Error: Please enter a target executable name.', true);
+        toast.error('Please enter a target executable name.');
         return;
       }
       setIsMonitoring(true);
@@ -904,10 +1013,14 @@ function App() {
             addLog(result.message);
           } else {
             addLog(`Error: ${result.message}`, true);
+            console.error('Start monitor failed:', result.message);
+            toast.error(`Failed to start monitor: ${result.message}`);
             setIsMonitoring(false);
           }
         } catch (error) {
           addLog(`Failed to communicate with backend: ${error}`, true);
+          console.error('Start monitor error:', error);
+          toast.error('Failed to start monitor. Please check connection.');
           setIsMonitoring(false);
         }
       }
@@ -921,20 +1034,36 @@ function App() {
     }
 
     if (isServicesSuspended) {
-      const res = await callEel<[], any>('restore_services');
-      if (res.status === 'success') {
-        addLog(res.message);
-        setIsServicesSuspended(false);
-      } else {
-        addLog(`Error: ${res.message}`, true);
+      try {
+        const res = await callEel<[], any>('restore_services');
+        if (res.status === 'success') {
+          addLog(res.message);
+          setIsServicesSuspended(false);
+        } else {
+          addLog(`Error: ${res.message}`, true);
+          console.error('Restore services failed:', res.message);
+          toast.error(`Failed to restore services: ${res.message}`);
+        }
+      } catch (error) {
+        addLog(`Error restoring services: ${error}`, true);
+        console.error('Restore services error:', error);
+        toast.error('Failed to restore services. Please check connection.');
       }
     } else {
-      const res = await callEel<[], any>('suspend_services');
-      if (res.status === 'success') {
-        addLog(res.message);
-        setIsServicesSuspended(true);
-      } else {
-        addLog(`Error: ${res.message}`, true);
+      try {
+        const res = await callEel<[], any>('suspend_services');
+        if (res.status === 'success') {
+          addLog(res.message);
+          setIsServicesSuspended(true);
+        } else {
+          addLog(`Error: ${res.message}`, true);
+          console.error('Suspend services failed:', res.message);
+          toast.error(`Failed to suspend services: ${res.message}`);
+        }
+      } catch (error) {
+        addLog(`Error suspending services: ${error}`, true);
+        console.error('Suspend services error:', error);
+        toast.error('Failed to suspend services. Please check connection.');
       }
     }
   };
@@ -953,9 +1082,13 @@ function App() {
           }
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('Tweak game settings failed:', result.message);
+          toast.error(`Failed to tweak game settings: ${result.message}`);
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
+        console.error('Tweak game settings error:', error);
+        toast.error('Failed to tweak game settings. Please check connection.');
       } finally {
         setIsTweaking(false);
       }
@@ -978,9 +1111,13 @@ function App() {
           addLog(result.message);
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('RAM purge failed:', result.message);
+          toast.error(`Failed to purge RAM: ${result.message}`);
         }
       } catch (error) {
         addLog(`Failed to purge RAM: ${error}`, true);
+        console.error('RAM purge error:', error);
+        toast.error('Failed to purge RAM. Please check connection.');
       } finally {
         setIsPurging(false);
       }
@@ -1011,10 +1148,14 @@ function App() {
           addLog(result.message);
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('Toggle power plan failed:', result.message);
+          toast.error(`Failed to switch power plan: ${result.message}`);
           setIsPowerPlanHigh(isPowerPlanHigh);
         }
       } catch (error) {
         addLog(`Failed to switch power plan: ${error}`, true);
+        console.error('Toggle power plan error:', error);
+        toast.error('Failed to switch power plan. Please check connection.');
         setIsPowerPlanHigh(isPowerPlanHigh);
       }
     } else {
@@ -1035,9 +1176,13 @@ function App() {
           addLog(result.message);
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('Update hotkeys failed:', result.message);
+          toast.error(`Failed to update hotkeys: ${result.message}`);
         }
       } catch (error) {
         addLog(`Failed to update hotkeys: ${error}`, true);
+        console.error('Update hotkeys error:', error);
+        toast.error('Failed to update hotkeys. Please check connection.');
       } finally {
         setIsUpdatingHotkeys(false);
       }
@@ -1060,9 +1205,13 @@ function App() {
           addLog(result.message);
         } else {
           addLog(`Error: ${result.message}`, true);
+          console.error('Network flush failed:', result.message);
+          toast.error(`Failed to flush network: ${result.message}`);
         }
       } catch (error) {
         addLog(`Failed to flush network: ${error}`, true);
+        console.error('Network flush error:', error);
+        toast.error('Failed to flush network. Please check connection.');
       } finally {
         setIsFlushingNetwork(false);
       }
@@ -1255,17 +1404,26 @@ function App() {
             </div>
 
             {installedGames.length === 0 ? (
-              <div className="bg-panel-bg p-12 rounded border border-gray-800 text-center flex flex-col items-center justify-center space-y-4">
-                <span className="text-5xl opacity-50" aria-hidden="true">🎮</span>
-                <p className="text-gray-400 text-lg">No games found in your library.</p>
-                <button
-                  onClick={() => handleScanGames(true)}
-                  disabled={isScanning}
-                  className={`mt-2 flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games Now</span>}
-                </button>
-              </div>
+              isScanning ? (
+                // Show skeleton loading cards while scanning
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <GameCardSkeleton key={`skeleton-${index}`} />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-panel-bg p-12 rounded border border-gray-800 text-center flex flex-col items-center justify-center space-y-4">
+                  <span className="text-5xl opacity-50" aria-hidden="true">🎮</span>
+                  <p className="text-gray-400 text-lg">No games found in your library.</p>
+                  <button
+                    onClick={() => handleScanGames(true)}
+                    disabled={isScanning}
+                    className={`mt-2 flex items-center justify-center space-x-2 bg-razer-green hover:bg-green-500 text-black font-black py-2.5 px-6 rounded-sm text-sm uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(68,214,44,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isScanning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {isScanning ? <><Loader2 size={16} className="animate-spin" /><span>Scanning...</span></> : <span>Scan Games Now</span>}
+                  </button>
+                </div>
+              )
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {installedGames.map(game => (
@@ -1278,6 +1436,7 @@ function App() {
                 ))}
               </div>
             )}
+            <Toaster />
           </div>
         )}
 
@@ -1523,18 +1682,29 @@ function App() {
             </div>
           </div>
           <div data-purpose="process-grid" className="w-full">
-            <Grid
-              columnCount={columnCount}
-              columnWidth={columnWidth}
-              height={400}
-              rowCount={rowCount}
-              rowHeight={80}
-              width={containerWidth}
-              itemData={itemData}
-              className="custom-scrollbar"
-            >
-              {Cell}
-            </Grid>
+            {isProcessesLoading ? (
+              // Show skeleton grid while loading
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" style={{ height: 400, overflowY: 'auto' }}>
+                {Array.from({ length: 12 }).map((_, index) => (
+                  <div key={`skeleton-${index}`} className="p-2">
+                    <ProcessItemSkeleton />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Grid
+                columnCount={columnCount}
+                columnWidth={columnWidth}
+                height={400}
+                rowCount={rowCount}
+                rowHeight={80}
+                width={containerWidth}
+                itemData={itemData}
+                className="custom-scrollbar"
+              >
+                {Cell}
+              </Grid>
+            )}
           </div>
         </section>
         {/* END: ProcessesSection */}
