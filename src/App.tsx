@@ -6,91 +6,24 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Settings, Play, X, Loader2 } from 'lucide-react';
 import { FixedSizeGrid as Grid } from 'react-window';
-import { callEel, isEelAvailable } from './api/eelClient';
+import { callEel, isEelAvailable } from './api';
 import toast, { Toaster } from 'react-hot-toast';
 
-interface EelResponse {
-  status: 'success' | 'error';
-  message: string;
-  details?: string;
-}
+// Import types from the new type definitions
+import type {
+  EelResponse,
+  TelemetryData,
+  SessionSummaryData,
+  SessionSummaryResponse,
+  PrimeGame,
+  ProcessInfo,
+  GameProfile,
+  Game,
+  Eel
+} from './types';
 
-interface TelemetryData {
-  cpu_usage: number;
-  ram_usage_gb: number;
-  gpu_usage: number;
-  gpu_temp: number;
-}
-
-interface SessionSummaryData {
-  avg_fps_gain: number;
-  '1_percent_lows_gain': number;
-  ram_cleared_gb: number;
-}
-
-interface SessionSummaryResponse {
-  status: 'success' | 'error';
-  message: string;
-  details: SessionSummaryData;
-}
-
-interface PrimeGame {
-  id: string;
-  name: string;
-  primeDescription: string;
-}
-
-interface ProcessInfo {
-  pid: number;
-  name: string;
-  memory_mb: number;
-}
-
-interface GameProfile {
-  high_priority: boolean;
-  network_flush: boolean;
-  power_plan: boolean;
-  suspend_services: boolean;
-  ram_purge: boolean;
-}
-
-interface Game {
-  id: string;
-  title: string;
-  exe_path: string;
-  exe_name: string;
-  icon_path: string | null;
-  profile: GameProfile;
-}
-
-interface Eel {
-  expose: (func: Function, name?: string) => void;
-  get_telemetry: () => () => Promise<TelemetryData>;
-  toggle_overlay: () => () => Promise<EelResponse>;
-  start_monitor: (targetExe: string) => () => Promise<EelResponse>;
-  stop_monitor: () => () => Promise<EelResponse>;
-  get_session_summary: () => () => Promise<SessionSummaryResponse>;
-  suspend_services: () => () => Promise<EelResponse>;
-  restore_services: () => () => Promise<EelResponse>;
-  purge_ram: () => () => Promise<EelResponse>;
-  tweak_game_settings: (gameName: string) => () => Promise<EelResponse>;
-  optimize_startup: () => () => Promise<EelResponse>;
-  set_power_plan: (planType: 'high_performance' | 'balanced') => () => Promise<EelResponse>;
-  flush_dns_and_reset: () => () => Promise<EelResponse>;
-  update_hotkeys: (newBoost: string, newOverlay: string) => () => Promise<EelResponse>;
-  get_prime_games: (forceRefresh?: boolean) => () => Promise<PrimeGame[]>;
-  scan_games: (forceRefresh?: boolean) => () => Promise<Game[]>;
-  launch_game: (gameId: string, profile: GameProfile, exePath: string, exeName: string) => () => Promise<EelResponse>;
-  get_live_processes: () => () => Promise<ProcessInfo[]>;
-  get_boost_profiles: () => () => Promise<Record<string, string[]>>;
-  save_custom_profile: (appNames: string[]) => () => Promise<EelResponse>;
-  undo_boost: () => () => Promise<EelResponse>;
-  boost_game: (pidsToKill?: number[], profileName?: string) => () => Promise<EelResponse>;
-  is_tray_active: () => () => Promise<boolean>;
-  toggle_tray_mode: (enable: boolean) => () => Promise<EelResponse>;
-  clean_shader_caches: () => () => Promise<EelResponse>;
-  full_system_clean: (includeShaders: boolean) => () => Promise<EelResponse>;
-}
+// Import extracted components
+import { GameCard, GameCardSkeleton, ProcessItem, ProcessItemSkeleton, LogLine } from './components/shared';
 
 // Declare eel for TypeScript
 declare global {
@@ -99,79 +32,6 @@ declare global {
   }
 }
 
-const GameCard = React.memo(({ game, onLaunch, onConfigure }: { game: Game, onLaunch: (game: Game) => void, onConfigure: (game: Game) => void }) => {
-  return (
-    <div className="group bg-panel-bg rounded border border-gray-800 hover:border-razer-green transition-all duration-300 overflow-hidden relative flex flex-col h-48 shadow-lg">
-      {/* Background Pattern/Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-800/20 to-black/60 z-0"></div>
-
-      {/* Card Content */}
-      <div className="relative z-10 p-5 flex-1 flex flex-col items-center justify-center">
-        <div className="w-16 h-16 bg-gray-900 rounded-lg shadow-inner flex items-center justify-center overflow-hidden mb-3 border border-gray-700 group-hover:border-razer-green/50 transition-colors">
-          {game.icon_path ? (
-            <img src={game.icon_path} alt={game.title} loading="lazy" className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-3xl opacity-70" aria-hidden="true">🕹️</span>
-          )}
-        </div>
-        <h3 className="text-white font-bold text-center w-full truncate px-2">{game.title}</h3>
-      </div>
-
-      {/* Hover Overlay with Actions */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-20 flex flex-col items-center justify-center space-y-3">
-        <button
-          onClick={(e) => { e.stopPropagation(); onLaunch(game); }}
-          className="bg-razer-green hover:bg-green-400 text-black font-black py-2 px-8 rounded-full text-sm uppercase tracking-wider transform hover:scale-105 transition-all shadow-[0_0_15px_rgba(68,214,44,0.4)] flex items-center space-x-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-          aria-label={`Play & Boost ${game.title}`}
-        >
-          <Play size={16} fill="currentColor" aria-hidden="true" />
-          <span>Play & Boost</span>
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onConfigure(game); }}
-          className="text-gray-300 hover:text-white flex items-center space-x-2 text-xs uppercase tracking-widest font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded px-2 py-1"
-          aria-label={`Configure Profile for ${game.title}`}
-        >
-          <Settings size={14} aria-hidden="true" />
-          <span>Configure Profile</span>
-        </button>
-      </div>
-    </div>
-  );
-});
-
-// Skeleton loading component for GameCard
-const GameCardSkeleton = React.memo(() => {
-  return (
-    <div className="group bg-panel-bg rounded border border-gray-800 overflow-hidden relative flex flex-col h-48 shadow-lg animate-pulse">
-      {/* Background Pattern/Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-800/20 to-black/60 z-0"></div>
-
-      {/* Card Content */}
-      <div className="relative z-10 p-5 flex-1 flex flex-col items-center justify-center">
-        <div className="w-16 h-16 bg-gray-700 rounded-lg shadow-inner flex items-center justify-center overflow-hidden mb-3 border border-gray-700">
-          {/* Placeholder for icon */}
-          <div className="w-full h-full bg-gray-600"></div>
-        </div>
-        <div className="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
-        <div className="h-3 bg-gray-800 rounded w-1/2"></div>
-      </div>
-
-      {/* Hover Overlay with Actions (hidden in skeleton) */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm opacity-0 z-20 flex flex-col items-center justify-center space-y-3">
-        <div className="h-8 bg-gray-700 rounded-full w-32"></div>
-        <div className="h-6 bg-gray-800 rounded w-24"></div>
-      </div>
-    </div>
-  );
-});
-
-// ⚡ Bolt: Extract LogLine to prevent O(N) string checks and DOM reconciliations on every log append.
-const LogLine = React.memo(({ log }: { log: string }) => {
-  return (
-    <p className={log.includes('Error') || log.includes('Failed') ? 'text-red-500' : ''}>{log}</p>
-  );
-});
 
 // ⚡ Bolt: Extract SystemConsole to prevent O(N) re-renders
 // The logs array grows indefinitely. Without React.memo, typing in text inputs or
@@ -249,56 +109,6 @@ const SelectedProcessItem = React.memo(({ proc }: { proc: ProcessInfo }) => {
   );
 });
 
-const ProcessItem = React.memo(({
-  proc,
-  isSelected,
-  onToggle
-}: {
-  proc: ProcessInfo;
-  isSelected: boolean;
-  onToggle: (pid: number) => void;
-}) => {
-  return (
-    <button
-      role="checkbox"
-      aria-checked={isSelected}
-      aria-label={`Select ${proc.name}`}
-      className={`w-full text-left p-3 flex items-center space-x-4 hover:bg-item-hover rounded cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-razer-green ${isSelected ? 'opacity-100 ring-1 ring-razer-green/50 bg-razer-green/5' : 'opacity-50 hover:opacity-100'}`}
-      onClick={() => onToggle(proc.pid)}
-    >
-      <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-razer-green text-black' : 'bg-gray-700 text-white'}`}>
-        <span className="text-[10px] font-bold">{proc.name.charAt(0).toUpperCase()}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-300 truncate">{proc.name}</p>
-        <p className="text-xs text-gray-500">{proc.memory_mb >= 1024 ? (proc.memory_mb / 1024).toFixed(1) + ' GB' : Math.round(proc.memory_mb) + ' MB'}</p>
-      </div>
-      <div className="flex-shrink-0">
-        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-razer-green border-razer-green' : 'border-gray-500 bg-transparent'}`}>
-          {isSelected && <div className="w-2 h-2 rounded-full bg-black"></div>}
-        </div>
-      </div>
-    </button>
-  );
-});
-
-// Skeleton loading component for ProcessItem
-const ProcessItemSkeleton = React.memo(() => {
-  return (
-    <div className="w-full text-left p-3 flex items-center space-x-4 rounded animate-pulse">
-      <div className="w-6 h-6 rounded bg-gray-700 flex items-center justify-center">
-        <div className="w-3 h-3 bg-gray-600 rounded-full"></div>
-      </div>
-      <div className="flex-1 min-w-0 space-y-2">
-        <div className="h-3 bg-gray-700 rounded w-3/4"></div>
-        <div className="h-2 bg-gray-800 rounded w-1/2"></div>
-      </div>
-      <div className="flex-shrink-0">
-        <div className="w-4 h-4 rounded-full border border-gray-700 bg-transparent"></div>
-      </div>
-    </div>
-  );
-});
 
 // ⚡ Bolt: Extracted TelemetryDashboard to prevent whole-app re-renders
 // By moving the 1000ms polling interval here, only this component will re-render
@@ -2033,4 +1843,4 @@ function App() {
   );
 }
 
-export default App;
+export { App };

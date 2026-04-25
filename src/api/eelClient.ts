@@ -1,8 +1,4 @@
-export interface EelResponse {
-  status: 'success' | 'error';
-  message: string;
-  details?: string;
-}
+import type { EelResponse } from '../types/api.types';
 
 type EelMethodFactory<TArgs extends unknown[], TResult> = (...args: TArgs) => () => Promise<TResult>;
 
