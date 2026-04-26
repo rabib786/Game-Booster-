@@ -22,6 +22,8 @@ import signal
 import logging
 import hashlib
 import getpass
+import structlog
+from opentelemetry import trace
 from logging.handlers import RotatingFileHandler
 from forensic_types import ProcessSnapshot, TerminationAuditLog
 
@@ -84,13 +86,61 @@ CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.j
 CONFIG_BACKUP_FILE = f"{CONFIG_FILE}.bak"
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'booster.log')
 
-logger = logging.getLogger("nexus_booster")
-if not logger.handlers:
-    logger.setLevel(logging.INFO)
-    log_handler = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding='utf-8')
-    log_handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | %(message)s'))
-    logger.addHandler(log_handler)
-    logger.propagate = False
+# --- Structured Logging Configuration ---
+def add_otel_context(logger, log_method, event_dict):
+    span = trace.get_current_span()
+    if span.is_recording():
+        ctx = span.get_span_context()
+        event_dict["trace_id"] = f"{ctx.trace_id:032x}"
+        event_dict["span_id"] = f"{ctx.span_id:016x}"
+    return event_dict
+
+def redact_sensitive_data(logger, log_method, event_dict):
+    """Redacts Windows User Paths (e.g., C:\\Users\\Name\\) to protect PII."""
+    def redact_str(val):
+        if isinstance(val, str):
+            # Regex to find C:\Users\Username\ or C:/Users/Username/
+            return re.sub(r'([a-zA-Z]:[\\/]Users[\\/])[^\\]+([\\/])', r'\1***\2', val, flags=re.IGNORECASE)
+        return val
+
+    for key, value in event_dict.items():
+        if isinstance(value, str):
+            event_dict[key] = redact_str(value)
+        elif isinstance(value, list):
+            event_dict[key] = [redact_str(v) if isinstance(v, str) else v for v in value]
+        elif isinstance(value, dict):
+             # Simple 1-level deep dictionary redaction for error context
+            for k, v in value.items():
+                 if isinstance(v, str):
+                     value[k] = redact_str(v)
+    return event_dict
+
+std_logger = logging.getLogger("nexus_booster")
+if not std_logger.handlers:
+    std_logger.setLevel(logging.INFO)
+    # 10MB limit, keep 5 backups
+    log_handler = RotatingFileHandler(LOG_FILE, maxBytes=10_000_000, backupCount=5, encoding='utf-8')
+    log_handler.setFormatter(logging.Formatter('%(message)s')) # Pass through raw JSON
+    std_logger.addHandler(log_handler)
+    std_logger.propagate = False
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.format_exc_info,
+        add_otel_context,
+        redact_sensitive_data,
+        structlog.processors.JSONRenderer()
+    ],
+    wrapper_class=structlog.stdlib.BoundLogger,
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
+logger = structlog.get_logger("nexus_booster")
 
 # Track system tray state
 tray_active = True
@@ -318,6 +368,48 @@ class AuditLogger:
         self.logger.info(json.dumps(log_entry.to_dict()))
 
 audit_logger = AuditLogger(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'audit.json'))
+
+@eel.expose
+def ingest_client_log(log_payload: dict):
+    """Endpoint for React frontend to send structured logs to the backend aggregator."""
+    level_str = log_payload.get("level", "INFO").lower()
+    msg = log_payload.get("message", "")
+    
+    # Extract trace_id to bind it to the context for this log entry
+    trace_id = log_payload.get("trace_id")
+    span_id = log_payload.get("span_id")
+    correlation_id = log_payload.get("correlation_id")
+    
+    # Remove these from the payload so they aren't duplicated if we bind them
+    log_payload.pop("message", None)
+    log_payload.pop("level", None)
+    
+    # Bind contextual IDs
+    bound_logger = logger.bind(
+        component=log_payload.get("component", "frontend"),
+        frontend_timestamp=log_payload.get("timestamp")
+    )
+    
+    if trace_id:
+        bound_logger = bound_logger.bind(trace_id=trace_id)
+    if span_id:
+        bound_logger = bound_logger.bind(span_id=span_id)
+    if correlation_id:
+        bound_logger = bound_logger.bind(correlation_id=correlation_id)
+        
+    if "error" in log_payload:
+        bound_logger = bound_logger.bind(error=log_payload["error"])
+
+    if level_str == "error" or level_str == "fatal":
+        bound_logger.error(msg, **log_payload)
+    elif level_str == "warn" or level_str == "warning":
+        bound_logger.warning(msg, **log_payload)
+    elif level_str == "debug":
+        bound_logger.debug(msg, **log_payload)
+    else:
+        bound_logger.info(msg, **log_payload)
+        
+    return {"status": "success"}
 
 @eel.expose
 def get_risk_score(pid: int) -> dict:

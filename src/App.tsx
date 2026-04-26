@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Settings, Play, X, Loader2 } from 'lucide-react';
 import { FixedSizeGrid as Grid } from 'react-window';
 import { callEel, isEelAvailable } from './api';
+import { logger, generateCorrelationId } from './utils/logger';
 import toast, { Toaster } from 'react-hot-toast';
 
 // Import types from the new type definitions
@@ -356,6 +357,13 @@ function App() {
   const addLog = useCallback((msg: string, isError = false) => {
     // ⚡ Bolt Optimization: Cap console logs to prevent unbounded memory growth and O(N) array copy operations
     setLogs(prev => [...prev.slice(-99), { id: nextLogId++, text: `> ${msg}` }]);
+    
+    // Dispatch to structured logger
+    if (isError) {
+      logger.error(msg);
+    } else {
+      logger.info(msg);
+    }
   }, []);
 
 
