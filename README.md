@@ -36,7 +36,49 @@ To run and build this project locally, you will need:
 
 ## Running the Application
 
-### The Complete Desktop App (Recommended)
+### Using Run Scripts (Recommended)
+We provide convenient run scripts for different platforms:
+
+**Windows (Batch):**
+```bash
+run.bat [mode]
+```
+
+**Windows (PowerShell):**
+```powershell
+.\run.ps1 [-Mode <mode>]
+```
+
+**Linux/macOS (Bash):**
+```bash
+./run.sh [mode]
+```
+
+Available modes:
+- `dev` - Start development environment (Vite dev server + Python backend)
+- `prod` - Build frontend and start production Python app
+- `frontend` - Start Vite dev server only (port 3000)
+- `backend` - Start Python backend only (requires built frontend)
+- `build` - Build frontend only
+- `help` - Show help message
+
+Examples:
+```bash
+# Start development environment (default)
+run.bat
+.\run.ps1
+./run.sh
+
+# Build and run production app
+run.bat prod
+.\run.ps1 -Mode prod
+./run.sh prod
+
+# Build frontend only
+run.bat build
+```
+
+### The Complete Desktop App (Manual)
 This application must be run on Windows and ideally with **Administrator privileges** to properly clean files and optimize the registry.
 
 1. First, build the React frontend:
