@@ -390,15 +390,17 @@ function App() {
   const handleScanGames = async (forceRefresh = false) => {
     setIsScanning(true);
     addLog('Scanning for installed games...');
+    const toastId = toast.loading('Scanning for installed games...');
     if (isEelAvailable()) {
       try {
         const games = await callEel<[any], any>('scan_games', forceRefresh);
         setInstalledGames(games);
         addLog(`Found ${games.length} games.`);
+        toast.success(`Found ${games.length} games.`, { id: toastId });
       } catch (error) {
         addLog(`Error scanning games: ${error}`);
         console.error('Scan games error:', error);
-        toast.error('Failed to scan games. Please try again.');
+        toast.error('Failed to scan games. Please try again.', { id: toastId });
       } finally {
         setIsScanning(false);
       }
@@ -435,6 +437,7 @@ function App() {
           }
         ]);
         addLog('Found 2 mock games.');
+        toast.success('Found 2 mock games.', { id: toastId });
         setIsScanning(false);
       }, 500);
     }
@@ -507,11 +510,13 @@ function App() {
     setIsCleaning(true);
     setCleanerStats(null);
     addLog(`Initiating System Clean sequence${includeShaders ? ' (including shaders)' : ''}...`);
+    const toastId = toast.loading(`Cleaning system${includeShaders ? ' (incl. shaders)' : ''}...`);
     if (window.eel && window.eel.full_system_clean) {
       try {
         const result = await callEel<[any], any>('full_system_clean', includeShaders);
         if (result.status === 'success') {
           addLog(result.message);
+          toast.success(result.message, { id: toastId });
           if (result.details) {
              addLog(`Details: ${result.details}`);
           }
@@ -526,12 +531,12 @@ function App() {
         } else {
           addLog(`Error: ${result.message}`, true);
           console.error('System clean failed:', result.message);
-          toast.error(`System clean failed: ${result.message}`);
+          toast.error(`System clean failed: ${result.message}`, { id: toastId });
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
         console.error('System clean error:', error);
-        toast.error('Failed to clean system. Please check connection.');
+        toast.error('Failed to clean system. Please check connection.', { id: toastId });
       } finally {
         setIsCleaning(false);
       }
@@ -539,6 +544,7 @@ function App() {
       setTimeout(() => {
         const amount = includeShaders ? 2500.45 : 150.45;
         addLog(`[Web Preview] Cleaned ${amount} MB of Junk.`);
+        toast.success(`Cleaned ${amount} MB of Junk.`, { id: toastId });
         if (includeShaders) {
             addLog(`[Web Preview] Details: NVIDIA DX: 2000 MB, Prefetch: 500 MB`);
         }
@@ -554,29 +560,32 @@ function App() {
   const handleOptimizeStartup = async () => {
     setIsOptimizing(true);
     addLog('Initiating Startup Optimization sequence...');
+    const toastId = toast.loading('Optimizing startup sequence...');
     if (isEelAvailable()) {
       try {
         const result = await callEel<[], any>('optimize_startup');
         if (result.status === 'success') {
           addLog(result.message);
+          toast.success(result.message, { id: toastId });
           if (result.details) {
             addLog(result.details);
           }
         } else {
           addLog(`Error: ${result.message}`, true);
           console.error('Startup optimization failed:', result.message);
-          toast.error(`Startup optimization failed: ${result.message}`);
+          toast.error(`Startup optimization failed: ${result.message}`, { id: toastId });
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
         console.error('Startup optimization error:', error);
-        toast.error('Failed to optimize startup. Please check connection.');
+        toast.error('Failed to optimize startup. Please check connection.', { id: toastId });
       } finally {
         setIsOptimizing(false);
       }
     } else {
       setTimeout(() => {
         addLog('[Web Preview] Disabled 3 startup programs.');
+        toast.success('Disabled 3 startup programs.', { id: toastId });
         setIsOptimizing(false);
       }, 1000);
     }
@@ -610,24 +619,26 @@ function App() {
     if (!skipIntroLog) {
       addLog('Initiating Game Boost sequence...');
     }
+    const toastId = toast.loading('Optimizing system for gaming...');
 
     if (isEelAvailable()) {
       try {
         const result = await callEel<[any, any], any>('boost_game', selectedPids, profileName);
         if (result.status === 'success') {
           addLog(result.message);
+          toast.success(result.message, { id: toastId });
           if (result.details) {
             addLog(result.details);
           }
         } else {
           addLog(`Error: ${result.message}`, true);
           console.error('Game boost failed:', result.message);
-          toast.error(`Game boost failed: ${result.message}`);
+          toast.error(`Game boost failed: ${result.message}`, { id: toastId });
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
         console.error('Game boost error:', error);
-        toast.error('Failed to execute game boost. Please check connection.');
+        toast.error('Failed to execute game boost. Please check connection.', { id: toastId });
       } finally {
         setIsBoosting(false);
       }
@@ -636,6 +647,7 @@ function App() {
       setTimeout(() => {
         const freed = (Math.random() * 500 + 200).toFixed(2);
         addLog(`[Web Preview] Freed ${freed} MB of RAM.`);
+        toast.success(`Freed ${freed} MB of RAM.`, { id: toastId });
         addLog(`[Web Preview] Optimized: Process list items`);
         setIsBoosting(false);
       }, 1500);
@@ -696,27 +708,30 @@ function App() {
   const handleUndoBoost = async () => {
     setIsUndoing(true);
     addLog('Attempting to restart terminated applications...');
+    const toastId = toast.loading('Restarting applications...');
     if (window.eel && window.eel.undo_boost) {
       try {
         const result = await callEel<[], any>('undo_boost');
         if (result.status === 'success') {
           addLog(result.message);
+          toast.success(result.message, { id: toastId });
           if (result.details) addLog(result.details);
         } else {
           addLog(`Error: ${result.message}`, true);
           console.error('Undo boost failed:', result.message);
-          toast.error(`Failed to undo boost: ${result.message}`);
+          toast.error(`Failed to undo boost: ${result.message}`, { id: toastId });
         }
       } catch (e) {
         addLog(`Failed to communicate: ${e}`, true);
         console.error('Undo boost error:', e);
-        toast.error('Failed to undo boost. Please check connection.');
+        toast.error('Failed to undo boost. Please check connection.', { id: toastId });
       } finally {
         setIsUndoing(false);
       }
     } else {
       setTimeout(() => {
         addLog('[Web Preview] Restarted applications.');
+        toast.success('Restarted applications.', { id: toastId });
         setIsUndoing(false);
       }, 1000);
     }
@@ -882,29 +897,32 @@ function App() {
   const handleTweakGame = useCallback(async (gameName: string) => {
     setIsTweaking(true);
     addLog(`Applying Booster Prime settings for ${gameName}...`);
+    const toastId = toast.loading(`Optimizing ${gameName}...`);
     if (isEelAvailable()) {
       try {
         const result = await callEel<[any], any>('tweak_game_settings', gameName);
         if (result.status === 'success') {
           addLog(result.message);
+          toast.success(result.message, { id: toastId });
           if (result.details) {
             addLog(`Tweaks applied: ${result.details}`);
           }
         } else {
           addLog(`Error: ${result.message}`, true);
           console.error('Tweak game settings failed:', result.message);
-          toast.error(`Failed to tweak game settings: ${result.message}`);
+          toast.error(`Failed to tweak game settings: ${result.message}`, { id: toastId });
         }
       } catch (error) {
         addLog(`Failed to communicate with backend: ${error}`, true);
         console.error('Tweak game settings error:', error);
-        toast.error('Failed to tweak game settings. Please check connection.');
+        toast.error('Failed to tweak game settings. Please check connection.', { id: toastId });
       } finally {
         setIsTweaking(false);
       }
     } else {
       setTimeout(() => {
         addLog(`[Web Preview] Applied Booster Prime settings for ${gameName}.`);
+        toast.success(`Optimized ${gameName} successfully.`, { id: toastId });
         addLog('Tweaks applied: Enabled DLSS, Disabled V-Sync');
         setIsTweaking(false);
       }, 1000);
@@ -914,26 +932,29 @@ function App() {
   const handlePurgeRam = async () => {
     setIsPurging(true);
     addLog('Initiating RAM Purge sequence...');
+    const toastId = toast.loading('Purging RAM...');
     if (isEelAvailable()) {
       try {
         const result = await callEel<[], any>('purge_ram');
         if (result.status === 'success') {
           addLog(result.message);
+          toast.success(result.message, { id: toastId });
         } else {
           addLog(`Error: ${result.message}`, true);
           console.error('RAM purge failed:', result.message);
-          toast.error(`Failed to purge RAM: ${result.message}`);
+          toast.error(`Failed to purge RAM: ${result.message}`, { id: toastId });
         }
       } catch (error) {
         addLog(`Failed to purge RAM: ${error}`, true);
         console.error('RAM purge error:', error);
-        toast.error('Failed to purge RAM. Please check connection.');
+        toast.error('Failed to purge RAM. Please check connection.', { id: toastId });
       } finally {
         setIsPurging(false);
       }
     } else {
       setTimeout(() => {
         addLog('[Web Preview] Successfully purged system RAM.');
+        toast.success('Successfully purged system RAM.', { id: toastId });
         setIsPurging(false);
       }, 1000);
     }
@@ -1007,27 +1028,30 @@ function App() {
   const handleNetworkFlush = async () => {
     setIsFlushingNetwork(true);
     addLog('Initiating Network Flush sequence...');
+    const toastId = toast.loading('Flushing network...');
 
     if (isEelAvailable()) {
       try {
         const result = await callEel<[], any>('flush_dns_and_reset');
         if (result.status === 'success') {
           addLog(result.message);
+          toast.success(result.message, { id: toastId });
         } else {
           addLog(`Error: ${result.message}`, true);
           console.error('Network flush failed:', result.message);
-          toast.error(`Failed to flush network: ${result.message}`);
+          toast.error(`Failed to flush network: ${result.message}`, { id: toastId });
         }
       } catch (error) {
         addLog(`Failed to flush network: ${error}`, true);
         console.error('Network flush error:', error);
-        toast.error('Failed to flush network. Please check connection.');
+        toast.error('Failed to flush network. Please check connection.', { id: toastId });
       } finally {
         setIsFlushingNetwork(false);
       }
     } else {
       setTimeout(() => {
         addLog('[Web Preview] Network flushed and reset successfully.');
+        toast.success('Network flushed and reset successfully.', { id: toastId });
         setIsFlushingNetwork(false);
       }, 1500);
     }
@@ -1246,7 +1270,6 @@ function App() {
                 ))}
               </div>
             )}
-            <Toaster />
           </div>
         )}
 
@@ -1839,6 +1862,21 @@ function App() {
           </div>
         </div>
       )}
+      <Toaster 
+        toastOptions={{
+          style: {
+            background: '#111',
+            color: '#fff',
+            border: '1px solid #333',
+          },
+          success: {
+            iconTheme: {
+              primary: '#44d62c',
+              secondary: '#000',
+            },
+          },
+        }}
+      />
     </div>
   );
 }
