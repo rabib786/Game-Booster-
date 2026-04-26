@@ -20,7 +20,10 @@ import subprocess
 import atexit
 import signal
 import logging
+import hashlib
+import getpass
 from logging.handlers import RotatingFileHandler
+from forensic_types import ProcessSnapshot, TerminationAuditLog
 
 
 
@@ -190,8 +193,141 @@ def save_config(config):
         json.dump(config, f, indent=4)
     logger.info("Config saved.")
 
+class ProcessSafetyManager:
+    """Multi-layered safety verification engine for process termination."""
+    
+    @staticmethod
+    def calculate_risk_score(proc: psutil.Process) -> tuple[int, list[str]]:
+        score = 0
+        factors = []
+        
+        try:
+            exe_path = proc.exe()
+            if not exe_path:
+                return 50, ["No executable path available"]
+                
+            exe_lower = exe_path.lower()
+            
+            # 1. Path Integrity
+            if 'windows\\system32' in exe_lower or 'windows\\syswow64' in exe_lower:
+                score += 80
+                factors.append("Running from critical Windows system directory")
+            elif 'program files\\common files' in exe_lower:
+                score += 30
+                factors.append("Running from Common Files directory")
+                
+            # 2. Privilege Level (Basic check via username on Windows)
+            try:
+                username = proc.username().lower()
+                if 'system' in username or 'network service' in username or 'local service' in username:
+                    score += 50
+                    factors.append(f"Running as privileged user ({username})")
+            except (psutil.AccessDenied, AttributeError):
+                score += 20
+                factors.append("Could not verify process username")
+                
+            # 3. Critical Process Names Fallback
+            name_lower = proc.name().lower()
+            if name_lower in CRITICAL_PROCESS_NAMES:
+                score += 100
+                factors.append(f"Matched critical process name list ({name_lower})")
+                
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            score += 40
+            factors.append("Access denied or process disappeared during analysis")
+            
+        return min(score, 100), factors
+
+    @staticmethod
+    def has_critical_open_files(proc: psutil.Process) -> bool:
+        try:
+            open_files = proc.open_files()
+            for f in open_files:
+                path_lower = f.path.lower()
+                if path_lower.endswith('.dat') or path_lower.endswith('.db') or '\\windows\\system32\\config\\' in path_lower:
+                    return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+        return False
+
+    @staticmethod
+    def terminate_gracefully(proc: psutil.Process, timeout: int = 3) -> bool:
+        """Attempts to gracefully terminate a process, falling back to kill if timeout expires."""
+        try:
+            proc.terminate()
+            try:
+                proc.wait(timeout=timeout)
+                return True
+            except psutil.TimeoutExpired:
+                logger.warning(f"Process {proc.pid} ignored SIGTERM. Escalating to SIGKILL.")
+                proc.kill()
+                proc.wait(timeout=1)
+                return False
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            return False
+
+class ProcessRollbackManager:
+    """Manages snapshots and rollback of terminated processes."""
+    
+    @staticmethod
+    def create_snapshot(proc: psutil.Process) -> ProcessSnapshot:
+        try:
+            return ProcessSnapshot(
+                pid=proc.pid,
+                name=proc.name(),
+                exe_path=proc.exe(),
+                cmdline=proc.cmdline(),
+                cwd=proc.cwd(),
+                environ=proc.environ()
+            )
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return None
+
+    @staticmethod
+    def rollback(snapshot: ProcessSnapshot) -> bool:
+        try:
+            kwargs = {'creationflags': 0x08000000} if sys.platform == 'win32' else {}
+            env = os.environ.copy()
+            if snapshot.environ:
+                env.update(snapshot.environ)
+                
+            subprocess.Popen(
+                snapshot.cmdline if snapshot.cmdline else [snapshot.exe_path],
+                cwd=snapshot.cwd if snapshot.cwd and os.path.exists(snapshot.cwd) else os.path.dirname(snapshot.exe_path),
+                env=env,
+                **kwargs
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to rollback {snapshot.name}: {e}")
+            return False
+
+class AuditLogger:
+    """Handles structured JSON auditing for forensic logging."""
+    
+    def __init__(self, log_file: str):
+        self.logger = logging.getLogger("nexus_audit")
+        if not self.logger.handlers:
+            self.logger.setLevel(logging.INFO)
+            handler = RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=5, encoding='utf-8')
+            handler.setFormatter(logging.Formatter('%(message)s'))  # Just raw JSON
+            self.logger.addHandler(handler)
+            self.logger.propagate = False
+            
+    def log_termination(self, log_entry: TerminationAuditLog):
+        self.logger.info(json.dumps(log_entry.to_dict()))
+
+audit_logger = AuditLogger(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'audit.json'))
+
 @eel.expose
-def get_boost_profiles():
+def get_risk_score(pid: int) -> dict:
+    """Exposed for UI to check risk before prompting."""
+    try:
+        proc = psutil.Process(pid)
+        score, factors = ProcessSafetyManager.calculate_risk_score(proc)
+        return {"status": "success", "score": score, "factors": factors, "name": proc.name()}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
     config = load_config()
     return config.get("boost_profiles", {})
 
@@ -226,21 +362,18 @@ def undo_boost():
     restarted = []
     failed = []
 
-    for path in killed_processes_history:
-        # Normalize path for security
-        normalized_path = os.path.normpath(os.path.abspath(path))
-        if os.path.exists(normalized_path):
-            exe_name = os.path.basename(normalized_path).lower()
-            if exe_name in trusted_targets:
-                try:
-                    kwargs = {'creationflags': 0x08000000} if sys.platform == 'win32' else {}
-                    subprocess.Popen([normalized_path], cwd=os.path.dirname(normalized_path), **kwargs)
-                    restarted.append(os.path.basename(normalized_path))
-                except Exception:
-                    failed.append(os.path.basename(normalized_path))
+    for snapshot in killed_processes_history:
+        # Check if the snapshot's executable is trusted
+        exe_name = snapshot.name.lower()
+        if exe_name in trusted_targets:
+            success = ProcessRollbackManager.rollback(snapshot)
+            if success:
+                restarted.append(snapshot.name)
             else:
-                logger.warning("Blocked attempt to restart untrusted process via undo: %s", normalized_path)
-                failed.append(os.path.basename(normalized_path))
+                failed.append(snapshot.name)
+        else:
+            logger.warning("Blocked attempt to restart untrusted process via undo: %s", snapshot.exe_path)
+            failed.append(snapshot.name)
 
     killed_processes_history.clear()
 
@@ -730,16 +863,16 @@ def purge_ram():
         return {"status": "error", "message": f"Failed to purge RAM: {str(e)}"}
 
 @eel.expose
-def boost_game(pids_to_kill=None, profile_name=None):
+def boost_game(pids_to_kill=None, profile_name=None, auto_approve=False):
     """
     Loops through running processes and safely kills selected
-    background applications (or hardcoded ones if None provided) to free up RAM and CPU.
+    background applications to free up RAM and CPU.
+    Utilizes ProcessSafetyManager for dependency/heuristic checks and 
+    ProcessRollbackManager for safe snapshotting.
     """
-    # ⚡ Bolt Optimization: Convert list structures to O(1) sets before entering the loop
     global killed_processes_history
     config = load_config()
 
-    # Security: Build a comprehensive trusted set from all profiles
     profiles = config.get("boost_profiles", {})
     trusted_targets = set()
     for p_name in profiles:
@@ -749,7 +882,7 @@ def boost_game(pids_to_kill=None, profile_name=None):
 
     targets_list = profiles.get(profile_name, ['spotify.exe', 'discord.exe', 'chrome.exe', 'msedge.exe', 'slack.exe', 'teams.exe'])
     if profile_name == "Conservative" and not pids_to_kill:
-        targets_list = [] # Only kill explicit selection
+        targets_list = []
 
     targets_set = set([t.lower() for t in targets_list])
 
@@ -759,12 +892,17 @@ def boost_game(pids_to_kill=None, profile_name=None):
     freed_memory = 0
     closed_apps = []
     skipped_apps = []
+    failed_terminations = []
 
-    # Whitelist the current process and all its children
     whitelist_pids = _get_process_whitelist()
+    
+    # We will aggregate risks. If any process requires approval and auto_approve is False, 
+    # we return a special status asking the frontend to prompt.
+    high_risk_targets = []
+    target_procs = []
 
+    # 1. First Pass: Discovery and Risk Assessment
     if pids_to_kill:
-        # ⚡ Bolt Optimization: Directly lookup targeted PIDs in O(K) instead of full O(N) system traversal
         for pid in pids_to_kill:
             if pid in whitelist_pids:
                 continue
@@ -774,25 +912,11 @@ def boost_game(pids_to_kill=None, profile_name=None):
                 if name and name.lower() in CRITICAL_PROCESS_NAMES:
                     skipped_apps.append(name)
                     continue
-                mem = proc.memory_info().rss / (1024 * 1024)
-                freed_memory += mem
-                closed_apps.append(name if name else str(pid))
-                try:
-                    exe_path = proc.exe()
-                    if exe_path:
-                        normalized_exe = os.path.normpath(os.path.abspath(exe_path))
-                        # Security Check: Only record for undo if it's in our trusted set
-                        if os.path.basename(normalized_exe).lower() in trusted_targets:
-                            if normalized_exe not in killed_processes_history:
-                                killed_processes_history.append(normalized_exe)
-                except:
-                    pass
-                proc.kill()
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                
+                target_procs.append(proc)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
     else:
-        # Fallback to full system scan if no explicit targets are given
-        # ⚡ Bolt Optimization: Lazy load memory_info to avoid expensive attribute retrieval for skipped processes
         for proc in psutil.process_iter():
             try:
                 pid = proc.pid
@@ -805,34 +929,106 @@ def boost_game(pids_to_kill=None, profile_name=None):
                     if name.lower() in CRITICAL_PROCESS_NAMES:
                         skipped_apps.append(name)
                         continue
-                    try:
-                        mem_info = proc.memory_info()
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        mem_info = None
-                    mem = (mem_info.rss / (1024 * 1024)) if mem_info else 0
-                    freed_memory += mem
-                    closed_apps.append(name if name else str(pid))
-
-                    # Record for undo in fallback scan as well
-                    try:
-                        exe_path = proc.exe()
-                        if exe_path:
-                            normalized_exe = os.path.normpath(os.path.abspath(exe_path))
-                            # name is already in targets_set, which is a subset of trusted_targets
-                            if normalized_exe not in killed_processes_history:
-                                killed_processes_history.append(normalized_exe)
-                    except:
-                        pass
-
-                    proc.kill()
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    target_procs.append(proc)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
+
+    # Evaluate risks
+    for proc in target_procs:
+        try:
+            score, factors = ProcessSafetyManager.calculate_risk_score(proc)
+            has_files = ProcessSafetyManager.has_critical_open_files(proc)
+            if has_files:
+                score += 50
+                factors.append("Process has critical open files (.db, .dat, or registry hives)")
+
+            # If risk is too high and we don't have explicit approval
+            if score >= 75 and not auto_approve:
+                high_risk_targets.append({
+                    "pid": proc.pid,
+                    "name": proc.name(),
+                    "score": score,
+                    "factors": factors
+                })
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+    # If we found high risk targets and don't have approval, pause and return to UI
+    if high_risk_targets and not auto_approve:
+        return {
+            "status": "requires_approval",
+            "message": f"Found {len(high_risk_targets)} high-risk processes.",
+            "high_risk_targets": high_risk_targets
+        }
+
+    # 2. Second Pass: Snapshot and Terminate
+    for proc in target_procs:
+        try:
+            name = proc.name()
+            pid = proc.pid
+            
+            mem = proc.memory_info().rss / (1024 * 1024)
+            
+            # Recalculate score for audit log
+            score, factors = ProcessSafetyManager.calculate_risk_score(proc)
+
+            # Create snapshot before terminating
+            snapshot = ProcessRollbackManager.create_snapshot(proc)
+            
+            # Calculate SHA-256 for audit log
+            exe_hash = None
+            try:
+                if snapshot and snapshot.exe_path and os.path.exists(snapshot.exe_path):
+                    with open(snapshot.exe_path, "rb") as f:
+                        exe_hash = hashlib.sha256(f.read(4096)).hexdigest() + "..."
+            except Exception:
+                pass
+                
+            # Attempt graceful termination
+            success = ProcessSafetyManager.terminate_gracefully(proc)
+            
+            if success:
+                freed_memory += mem
+                closed_apps.append(name if name else str(pid))
+                if snapshot:
+                    killed_processes_history.append(snapshot)
+                    
+                # Audit Log
+                audit_logger.log_termination(TerminationAuditLog(
+                    timestamp=datetime.datetime.utcnow().isoformat(),
+                    target_pid=pid,
+                    target_name=name,
+                    target_hash=exe_hash,
+                    heuristic_risk_score=score,
+                    contributing_factors=factors,
+                    termination_method="Graceful (SIGTERM -> Wait)",
+                    authorization_status="Auto-Approved" if score < 75 else "User Confirmed",
+                    execution_context=getpass.getuser()
+                ))
+            else:
+                failed_terminations.append(name)
+                audit_logger.log_termination(TerminationAuditLog(
+                    timestamp=datetime.datetime.utcnow().isoformat(),
+                    target_pid=pid,
+                    target_name=name,
+                    target_hash=exe_hash,
+                    heuristic_risk_score=score,
+                    contributing_factors=factors,
+                    termination_method="Forceful (SIGKILL) / Failed",
+                    authorization_status="Auto-Approved" if score < 75 else "User Confirmed",
+                    execution_context=getpass.getuser()
+                ))
+
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
 
     unique_closed = list(set(closed_apps))
     unique_skipped = list(set(skipped_apps))
     details_parts = [f"Closed: {', '.join(unique_closed) if unique_closed else 'No target apps found running.'}"]
     if unique_skipped:
         details_parts.append(f"Skipped protected processes: {', '.join(unique_skipped)}")
+    if failed_terminations:
+        details_parts.append(f"Failed to terminate: {', '.join(failed_terminations)}")
 
     return {
         "status": "success",

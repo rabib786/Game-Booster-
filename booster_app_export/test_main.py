@@ -27,6 +27,7 @@ from main import (
     flush_dns_and_reset, validate_config, get_prime_games,
     suspend_services, restore_services, purge_ram
 )
+from forensic_types import ProcessSnapshot
 
 class TestCleanSystem(unittest.TestCase):
     @patch('os.environ.get')
@@ -389,7 +390,7 @@ class TestUndoBoost(unittest.TestCase):
         mock_exists.return_value = True
 
         main.killed_processes_history = [
-            "/mock/path/discord.exe"
+            ProcessSnapshot(pid=1000, name="discord.exe", exe_path="/mock/path/discord.exe", cmdline=["/mock/path/discord.exe"], cwd="/mock/path", environ={})
         ]
 
         result = main.undo_boost()
@@ -417,7 +418,7 @@ class TestUndoBoost(unittest.TestCase):
         mock_exists.return_value = True
 
         main.killed_processes_history = [
-            "/mock/path/malicious.exe"
+            ProcessSnapshot(pid=1000, name="malicious.exe", exe_path="/mock/path/malicious.exe", cmdline=["/mock/path/malicious.exe"], cwd="/mock/path", environ={})
         ]
 
         result = main.undo_boost()
@@ -540,6 +541,103 @@ class TestPurgeRam(unittest.TestCase):
         self.assertTrue(main.is_tray_active())
         main.tray_active = False
         self.assertFalse(main.is_tray_active())
+
+class MockProcess:
+    def __init__(self, pid, name, mem_mb):
+        self.pid = pid
+        self._name = name
+        self._mem = mem_mb
+
+    def name(self):
+        return self._name
+
+    def memory_info(self):
+        class MemInfo:
+            def __init__(self, rss):
+                self.rss = rss
+        return MemInfo(self._mem * 1024 * 1024)
+
+    def exe(self):
+        return f"C:\\mock\\{self._name}"
+        
+    def cmdline(self):
+        return [self.exe()]
+        
+    def cwd(self):
+        return "C:\\mock\\"
+        
+    def environ(self):
+        return {}
+        
+    def open_files(self):
+        return []
+
+class TestBoostGame(unittest.TestCase):
+    @patch('main.psutil.process_iter')
+    @patch('main.psutil.Process')
+    @patch('main.ProcessSafetyManager.calculate_risk_score')
+    @patch('main.ProcessSafetyManager.terminate_gracefully')
+    def test_boost_game_requires_approval(self, mock_terminate, mock_calc_score, mock_process, mock_iter):
+        main.killed_processes_history.clear()
+        
+        # Monkeypatch the mock psutil exceptions
+        main.psutil.NoSuchProcess = Exception
+        main.psutil.AccessDenied = Exception
+        main.psutil.ZombieProcess = Exception
+
+        def process_side_effect(pid):
+            if pid == 101: return MockProcess(101, 'discord.exe', 100)
+            if pid == 202: return MockProcess(202, 'unknown_high_risk.exe', 50)
+            raise Exception(pid)
+            
+        mock_process.side_effect = process_side_effect
+        
+        def calc_score_side_effect(proc):
+            if proc.name() == 'unknown_high_risk.exe':
+                return 80, ["Mock high risk factor"]
+            return 10, []
+            
+        mock_calc_score.side_effect = calc_score_side_effect
+        mock_terminate.return_value = True
+
+        result = main.boost_game(pids_to_kill=[101, 202])
+        
+        self.assertEqual(result["status"], "requires_approval")
+        self.assertIn("high-risk processes", result["message"])
+        self.assertEqual(len(result["high_risk_targets"]), 1)
+        self.assertEqual(result["high_risk_targets"][0]["name"], "unknown_high_risk.exe")
+
+    @patch('main.psutil.process_iter')
+    @patch('main.psutil.Process')
+    @patch('main.ProcessSafetyManager.calculate_risk_score')
+    @patch('main.ProcessSafetyManager.terminate_gracefully')
+    def test_boost_game_auto_approve(self, mock_terminate, mock_calc_score, mock_process, mock_iter):
+        main.killed_processes_history.clear()
+        
+        # Monkeypatch the mock psutil exceptions
+        main.psutil.NoSuchProcess = Exception
+        main.psutil.AccessDenied = Exception
+        main.psutil.ZombieProcess = Exception
+        
+        def process_side_effect(pid):
+            if pid == 101: return MockProcess(101, 'discord.exe', 100)
+            if pid == 202: return MockProcess(202, 'unknown_high_risk.exe', 50)
+            raise Exception(pid)
+            
+        mock_process.side_effect = process_side_effect
+        
+        def calc_score_side_effect(proc):
+            if proc.name() == 'unknown_high_risk.exe':
+                return 80, ["Mock high risk factor"]
+            return 10, []
+            
+        mock_calc_score.side_effect = calc_score_side_effect
+        mock_terminate.return_value = True
+
+        result = main.boost_game(pids_to_kill=[101, 202], auto_approve=True)
+        
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(main.killed_processes_history), 2)
 
 if __name__ == '__main__':
     unittest.main()

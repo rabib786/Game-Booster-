@@ -221,6 +221,8 @@ function App() {
   const [isUndoing, setIsUndoing] = useState(false);
   const [isSavingCustomProfile, setIsSavingCustomProfile] = useState(false);
   const [isHyperBoosting, setIsHyperBoosting] = useState(false);
+  const [highRiskTargets, setHighRiskTargets] = useState<{pid: number, name: string, score: number, factors: string[]}[]>([]);
+  const [showHighRiskDialog, setShowHighRiskDialog] = useState(false);
 
   useEffect(() => {
     const fetchTrayStatus = async () => {
@@ -614,7 +616,7 @@ function App() {
     }
   };
 
-  const executeBoost = async (profileName: 'Aggressive' | 'Conservative' | 'Custom' = boostProfile, skipIntroLog = false) => {
+  const executeBoost = async (profileName: 'Aggressive' | 'Conservative' | 'Custom' = boostProfile, skipIntroLog = false, autoApprove = false) => {
     setIsBoosting(true);
     if (!skipIntroLog) {
       addLog('Initiating Game Boost sequence...');
@@ -623,13 +625,18 @@ function App() {
 
     if (isEelAvailable()) {
       try {
-        const result = await callEel<[any, any], any>('boost_game', selectedPids, profileName);
+        const result = await callEel<[any, any, boolean], any>('boost_game', selectedPids, profileName, autoApprove);
         if (result.status === 'success') {
           addLog(result.message);
           toast.success(result.message, { id: toastId });
           if (result.details) {
             addLog(result.details);
           }
+        } else if (result.status === 'requires_approval') {
+          toast.dismiss(toastId);
+          setIsBoosting(false);
+          setHighRiskTargets(result.high_risk_targets);
+          setShowHighRiskDialog(true);
         } else {
           addLog(`Error: ${result.message}`, true);
           console.error('Game boost failed:', result.message);
@@ -640,7 +647,9 @@ function App() {
         console.error('Game boost error:', error);
         toast.error('Failed to execute game boost. Please check connection.', { id: toastId });
       } finally {
-        setIsBoosting(false);
+        if (!showHighRiskDialog) {
+            setIsBoosting(false);
+        }
       }
     } else {
       // Fallback for web preview mode if Eel is not available
@@ -1172,6 +1181,64 @@ function App() {
 
       {/* BEGIN: MainContent */}
 <main className="flex-1 overflow-y-auto p-8 custom-scrollbar" data-purpose="dashboard-content">
+
+      {/* High Risk Approval Modal */}
+      {showHighRiskDialog && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="high-risk-title">
+          <div className="bg-[#111] border border-red-800 rounded p-6 max-w-lg w-full shadow-2xl animate-fade-in">
+            <div className="flex justify-between items-center mb-4">
+              <h2 id="high-risk-title" className="text-xl font-bold text-red-500 flex items-center space-x-2">
+                <span aria-hidden="true">🚨</span>
+                <span>High-Risk Operations Detected</span>
+              </h2>
+            </div>
+            
+            <p className="text-sm text-gray-400 mb-4">
+              The following processes have been flagged by the safety engine as potentially critical to system stability. Terminating them may cause data loss or system crashes.
+            </p>
+
+            <div className="bg-black border border-gray-800 rounded max-h-60 overflow-y-auto mb-6 custom-scrollbar p-2">
+              <ul className="space-y-4">
+                {highRiskTargets.map(target => (
+                  <li key={target.pid} className="text-xs p-2 bg-gray-900/50 rounded border-l-2 border-red-500">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-red-400 font-bold text-sm">{target.name}</span>
+                      <span className="text-gray-500">PID: {target.pid}</span>
+                    </div>
+                    <ul className="list-disc pl-4 space-y-1 text-gray-400">
+                      {target.factors.map((factor, idx) => (
+                        <li key={idx}>{factor}</li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex justify-end space-x-4 mt-6">
+              <button
+                onClick={() => {
+                  setShowHighRiskDialog(false);
+                  addLog("Boost sequence cancelled by user due to high-risk processes.", true);
+                }}
+                className="px-4 py-2 rounded text-sm font-bold text-gray-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+              >
+                Abort
+              </button>
+              <button
+                onClick={() => {
+                  setShowHighRiskDialog(false);
+                  addLog("User explicitly authorized high-risk termination.");
+                  executeBoost(boostProfile, true, true); // Auto-approve
+                }}
+                className="bg-red-600 hover:bg-red-500 text-white font-black px-6 py-2 rounded text-sm uppercase tracking-wider transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+              >
+                Authorize Termination
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {showConfirmDialog && (
