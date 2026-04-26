@@ -25,6 +25,7 @@ import type {
 
 // Import extracted components
 import { GameCard, GameCardSkeleton, ProcessItem, ProcessItemSkeleton, LogLine } from './components/shared';
+import { PerformanceDashboard } from './components/dashboard/PerformanceDashboard';
 
 // Declare eel for TypeScript
 declare global {
