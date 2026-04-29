@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Settings, Play, X, Loader2 } from 'lucide-react';
 import { FixedSizeGrid as Grid } from 'react-window';
 import { callEel, isEelAvailable } from './api';
-import { logger, generateCorrelationId, formatMemory, limitArray } from './utils';
+import { logger, generateCorrelationId, formatMemory, limitArray, getSecureRandom } from './utils';
 import toast, { Toaster } from 'react-hot-toast';
 
 // Import types from the new type definitions
@@ -133,10 +133,10 @@ const TelemetryDashboard = React.memo(() => {
     } else {
       interval = setInterval(() => {
         setTelemetry({
-          cpu_usage: Math.floor(Math.random() * 40) + 10,
-          ram_usage_gb: parseFloat((Math.random() * 8 + 4).toFixed(1)),
-          gpu_usage: Math.floor(Math.random() * 30) + 5,
-          gpu_temp: Math.floor(Math.random() * 20) + 40
+          cpu_usage: Math.floor(getSecureRandom() * 40) + 10,
+          ram_usage_gb: parseFloat((getSecureRandom() * 8 + 4).toFixed(1)),
+          gpu_usage: Math.floor(getSecureRandom() * 30) + 5,
+          gpu_temp: Math.floor(getSecureRandom() * 20) + 40
         });
       }, 1000);
     }
@@ -663,7 +663,7 @@ function App() {
     } else {
       // Fallback for web preview mode if Eel is not available
       setTimeout(() => {
-        const freed = (Math.random() * 500 + 200).toFixed(2);
+        const freed = (getSecureRandom() * 500 + 200).toFixed(2);
         addLog(`[Web Preview] Freed ${freed} MB of RAM.`);
         toast.success(`Freed ${freed} MB of RAM.`, { id: toastId });
         addLog(`[Web Preview] Optimized: Process list items`);
