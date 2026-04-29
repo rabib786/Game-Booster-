@@ -6,6 +6,7 @@ import {
   LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, TooltipProps
 } from 'recharts';
 import { callEel, isEelAvailable } from '../../api';
+import { formatTime, limitArray } from '../../utils';
 import { Download, RefreshCw, Layout, Camera, Clock } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { toast } from 'react-hot-toast';
@@ -57,7 +58,7 @@ export const PerformanceDashboard = React.memo(() => {
         setData(prev => {
           const newArr = [...prev, point];
           // Keep max 60 points for Live view (approx 1 minute)
-          return newArr.slice(-60);
+          return limitArray(newArr, 60);
         });
       } catch (e) {
         console.error("Live fetch error", e);
@@ -132,17 +133,11 @@ export const PerformanceDashboard = React.memo(() => {
     toast.success("Data exported to CSV.");
   };
 
-  const formatTime = (isoString: string) => {
-    const d = new Date(isoString);
-    if (timeWindow === '24h') return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
-
   const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-black/90 border border-gray-700 p-2 rounded shadow-xl text-xs">
-          <p className="text-gray-400 mb-1">{formatTime(label)}</p>
+          <p className="text-gray-400 mb-1">{formatTime(label, timeWindow)}</p>
           {payload.map((entry, index) => (
             <p key={`item-${index}`} style={{ color: entry.color }} className="font-bold">
               {entry.name}: {typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}
@@ -257,7 +252,7 @@ export const PerformanceDashboard = React.memo(() => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                    <XAxis dataKey="time" tickFormatter={formatTime} stroke="#555" fontSize={10} minTickGap={30} />
+                    <XAxis dataKey="time" tickFormatter={(t) => formatTime(t, timeWindow)} stroke="#555" fontSize={10} minTickGap={30} />
                     <YAxis stroke="#555" fontSize={10} domain={[0, 100]} />
                     <RechartsTooltip content={<CustomTooltip />} />
                     <ReferenceLine y={90} stroke="red" strokeDasharray="3 3" />
@@ -283,7 +278,7 @@ export const PerformanceDashboard = React.memo(() => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                    <XAxis dataKey="time" tickFormatter={formatTime} stroke="#555" fontSize={10} minTickGap={30} />
+                    <XAxis dataKey="time" tickFormatter={(t) => formatTime(t, timeWindow)} stroke="#555" fontSize={10} minTickGap={30} />
                     <YAxis stroke="#555" fontSize={10} domain={['auto', 'auto']} />
                     <RechartsTooltip content={<CustomTooltip />} />
                     <Area type="monotone" dataKey="ram_usage_gb" name="RAM" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRam)" isAnimationActive={timeWindow !== 'Live'} />
@@ -302,7 +297,7 @@ export const PerformanceDashboard = React.memo(() => {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                    <XAxis dataKey="time" tickFormatter={formatTime} stroke="#555" fontSize={10} minTickGap={30} />
+                    <XAxis dataKey="time" tickFormatter={(t) => formatTime(t, timeWindow)} stroke="#555" fontSize={10} minTickGap={30} />
                     <YAxis yAxisId="left" stroke="#555" fontSize={10} domain={[0, 100]} />
                     <YAxis yAxisId="right" orientation="right" stroke="#555" fontSize={10} domain={[30, 100]} />
                     <RechartsTooltip content={<CustomTooltip />} />
@@ -323,7 +318,7 @@ export const PerformanceDashboard = React.memo(() => {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                    <XAxis dataKey="time" tickFormatter={formatTime} stroke="#555" fontSize={10} minTickGap={30} />
+                    <XAxis dataKey="time" tickFormatter={(t) => formatTime(t, timeWindow)} stroke="#555" fontSize={10} minTickGap={30} />
                     <YAxis stroke="#555" fontSize={10} domain={['auto', 'auto']} />
                     <RechartsTooltip content={<CustomTooltip />} />
                     <Line type="monotone" dataKey="network_tx_mbps" name="TX (Upload)" stroke="#eab308" dot={false} isAnimationActive={timeWindow !== 'Live'} />

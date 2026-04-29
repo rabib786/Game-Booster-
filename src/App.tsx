@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Settings, Play, X, Loader2 } from 'lucide-react';
 import { FixedSizeGrid as Grid } from 'react-window';
 import { callEel, isEelAvailable } from './api';
-import { logger, generateCorrelationId } from './utils/logger';
+import { logger, generateCorrelationId, formatMemory, limitArray } from './utils';
 import toast, { Toaster } from 'react-hot-toast';
 
 // Import types from the new type definitions
@@ -352,12 +352,12 @@ function App() {
 
   const addLogFromPython = (msg: string) => {
     // ⚡ Bolt Optimization: Cap console logs to prevent unbounded memory growth and O(N) array copy operations
-    setLogs(prev => [...prev.slice(-99), { id: nextLogId++, text: `> ${msg}` }]);
+    setLogs(prev => [...limitArray(prev, 99), { id: nextLogId++, text: `> ${msg}` }]);
   };
 
   const addLog = useCallback((msg: string, isError = false) => {
     // ⚡ Bolt Optimization: Cap console logs to prevent unbounded memory growth and O(N) array copy operations
-    setLogs(prev => [...prev.slice(-99), { id: nextLogId++, text: `> ${msg}` }]);
+    setLogs(prev => [...limitArray(prev, 99), { id: nextLogId++, text: `> ${msg}` }]);
     
     // Dispatch to structured logger
     if (isError) {
@@ -1142,7 +1142,8 @@ function App() {
   }, [liveProcesses, selectedPidsSet]);
 
   const memoryFreedGB = useMemo(() => {
-    return (selectedProcesses.reduce((sum, p) => sum + p.memory_mb, 0) / 1024).toFixed(2);
+    const totalMb = selectedProcesses.reduce((sum, p) => sum + p.memory_mb, 0);
+    return formatMemory(totalMb);
   }, [selectedProcesses]);
 
   const tabOrder: Array<'Library' | 'Boost Tab' | 'System Booster' | 'Booster Prime' | 'Settings'> = ['Library', 'Boost Tab', 'System Booster', 'Booster Prime', 'Settings'];
@@ -1268,7 +1269,7 @@ function App() {
             </div>
 
             <p className="text-sm text-gray-400 mb-4">
-              You are about to terminate <strong className="text-white">{selectedPids.length}</strong> processes. This will free approximately <strong className="text-razer-green">{memoryFreedGB} GB</strong> of RAM.
+              You are about to terminate <strong className="text-white">{selectedPids.length}</strong> processes. This will free approximately <strong className="text-razer-green">{memoryFreedGB}</strong> of RAM.
             </p>
 
             <div className="bg-black border border-gray-800 rounded max-h-60 overflow-y-auto mb-6 custom-scrollbar p-2">
